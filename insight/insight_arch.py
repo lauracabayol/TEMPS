@@ -8,64 +8,37 @@ class Photoz_network(nn.Module):
             nn.Linear(6, 10),
             nn.Dropout(dropout_prob),
             nn.ReLU(),
-            nn.Linear(10, 30),
+            nn.Linear(10, 20),
             nn.Dropout(dropout_prob),
             nn.ReLU(),
-            nn.Linear(30, 50),
+            nn.Linear(20, 50),
             nn.Dropout(dropout_prob),
             nn.ReLU(),
-            nn.Linear(50, 70),
+            nn.Linear(50, 20),
             nn.Dropout(dropout_prob),
             nn.ReLU(),
-            nn.Linear(70, 100)
+            nn.Linear(20, 10)
         )
         
         self.measure_mu = nn.Sequential(
-            nn.Linear(100, 80),
+            nn.Linear(10, 20),
             nn.Dropout(dropout_prob),
             nn.ReLU(),
-            nn.Linear(80, 70),
-            nn.Dropout(dropout_prob),
-            nn.ReLU(),        
-            nn.Linear(70, 60),
-            nn.Dropout(dropout_prob),
-            nn.ReLU(),
-            nn.Linear(60, 50),
-            nn.Dropout(dropout_prob),
-            nn.ReLU(),
-            nn.Linear(50, num_gauss)
+            nn.Linear(20, num_gauss)
         )
 
         self.measure_coeffs = nn.Sequential(
-            nn.Linear(100, 80),
+            nn.Linear(10, 20),
             nn.Dropout(dropout_prob),
             nn.ReLU(),
-            nn.Linear(80, 70),
-            nn.Dropout(dropout_prob),
-            nn.ReLU(),        
-            nn.Linear(70, 60),
-            nn.Dropout(dropout_prob),
-            nn.ReLU(),
-            nn.Linear(60, 50),
-            nn.Dropout(dropout_prob),
-            nn.ReLU(),
-            nn.Linear(50, num_gauss)
+            nn.Linear(20, num_gauss)
         )
 
         self.measure_sigma = nn.Sequential(
-            nn.Linear(100, 80),
+            nn.Linear(10, 20),
             nn.Dropout(dropout_prob),
             nn.ReLU(),
-            nn.Linear(80, 70),
-            nn.Dropout(dropout_prob),
-            nn.ReLU(),        
-            nn.Linear(70, 60),
-            nn.Dropout(dropout_prob),
-            nn.ReLU(),
-            nn.Linear(60, 50),
-            nn.Dropout(dropout_prob),
-            nn.ReLU(),
-            nn.Linear(50, num_gauss)
+            nn.Linear(20, num_gauss)
         )
         
     def forward(self, x):

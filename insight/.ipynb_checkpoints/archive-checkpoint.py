@@ -13,7 +13,7 @@ rcParams["font.family"] = "STIXGeneral"
 
 
 class archive():
-    def __init__(self, path, aperture=2, drop_stars=True, clean_photometry=True, convert_colors=True, extinction_corr=True, only_zspec=True, reliable_zspec=True):
+    def __init__(self, path, aperture=2, drop_stars=True, clean_photometry=True, convert_colors=True, extinction_corr=True, only_zspec=True, Qz_cut=1):
         
         self.aperture = aperture
         
@@ -39,30 +39,28 @@ class archive():
         hdu_list = fits.open(os.path.join(path,filename_valid))
         cat_test = Table(hdu_list[1].data).to_pandas()
         
+        self._get_loss_weights(cat)
+        self._get_loss_weights(cat_test)
+        
         gold_sample = pd.read_csv(os.path.join(path,filename_gold))
         
         #cat_test = self._match_gold_sample(cat_test,gold_sample)        
         
         if drop_stars==True:
             cat = cat[cat.mu_class_L07==1]
+            cat_test = cat_test[cat_test.mu_class_L07==1]
 
         if clean_photometry==True:
             cat = self._clean_photometry(cat)
             cat_test = self._clean_photometry(cat_test)
             
-        self._get_loss_weights(cat)
         
         cat = cat[cat.w_Q_f_S15>0]
-            
-        self._set_training_data(cat, only_zspec=only_zspec, reliable_zspec=reliable_zspec, extinction_corr=extinction_corr, convert_colors=convert_colors)
-        
-        
-        self._set_testing_data(cat_test, only_zspec=only_zspec, reliable_zspec='Total', extinction_corr=extinction_corr, convert_colors=convert_colors)
+                    
+        self._set_training_data(cat, only_zspec=only_zspec, extinction_corr=extinction_corr, convert_colors=convert_colors,Qz_cut=Qz_cut)
+        self._set_testing_data(cat_test, only_zspec=only_zspec, extinction_corr=extinction_corr, convert_colors=convert_colors)
         
         self._get_loss_weights(cat)
-        
-        #self.cat_test=cat_test
-        #self.cat_train=cat
             
     def _extract_fluxes(self,catalogue):
         columns_f = [f'FLUX_{x}_{self.aperture}' for x in ['G','R','I','Z','Y','J','H']]
@@ -100,13 +98,9 @@ class archive():
             catalogue = catalogue[catalogue.z_spec_S15>0]
         return catalogue
 
-    def _clean_zspec_sample(self,catalogue ,kind=None):
-        if kind==None:
-            return catalogue
-        elif kind=='Total':
-            return catalogue[catalogue['reliable_S15']>0]
-        elif kind=='Partial':
-            return catalogue[(catalogue['w_Q_f_S15']>0.5)]
+    def _clean_zspec_sample(self,catalogue ,Qz_cut):
+        catalogue = catalogue[catalogue.w_Q_f_S15>=Qz_cut]
+        return catalogue
         
     def _map_weight(self,Qz):
         for key, value in self.weight_dict.items():
@@ -134,11 +128,11 @@ class archive():
         return catalogue_valid
 
     
-    def _set_training_data(self,catalogue, only_zspec=True, reliable_zspec=True, extinction_corr=True, convert_colors=True):
+    def _set_training_data(self,catalogue, only_zspec=True, extinction_corr=True, convert_colors=True,Qz_cut=1):
         
         if only_zspec:
             catalogue = self._take_only_zspec(catalogue, cat_flag='Calib')
-            catalogue = self._clean_zspec_sample(catalogue, kind=reliable_zspec)
+            catalogue = self._clean_zspec_sample(catalogue, Qz_cut=Qz_cut)
             
         self.cat_train=catalogue
         f, ferr = self._extract_fluxes(catalogue)
@@ -159,11 +153,11 @@ class archive():
         self.target_z_train = catalogue['z_spec_S15'].values
         self.target_qz_train = catalogue['w_Q_f_S15'].values
         
-    def _set_testing_data(self,catalogue, only_zspec=True, reliable_zspec=True, extinction_corr=True, convert_colors=True):
+    def _set_testing_data(self,catalogue, only_zspec=True, extinction_corr=True, convert_colors=True):
  
         if only_zspec:
             catalogue = self._take_only_zspec(catalogue, cat_flag='Valid')
-            catalogue = self._clean_zspec_sample(catalogue, kind=reliable_zspec)
+            catalogue = self._clean_zspec_sample(catalogue, Qz_cut=1)
             
         self.cat_test=catalogue
             

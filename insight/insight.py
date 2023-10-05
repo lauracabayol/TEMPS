@@ -8,34 +8,37 @@ from astropy.io import fits
 import os
 from astropy.table import Table
 from scipy.spatial import KDTree
+from scipy.special import erf
 
 class Insight_module():
     """ Define class"""
     
-    def __init__(self, model):
+    def __init__(self, model, batch_size):
         self.model=model
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.batch_size=batch_size
         
-    def _get_dataloaders(self, input_data, target_data, target_weights, val_fraction=0.1):
+    def _get_dataloaders(self, input_data, target_data, val_fraction=0.1):
         input_data = torch.Tensor(input_data)
         target_data = torch.Tensor(target_data)
-        target_weights = torch.Tensor(target_weights)
 
-        dataset = TensorDataset(input_data, target_data, target_weights)
+        dataset = TensorDataset(input_data, target_data)
 
         trainig_dataset, val_dataset = torch.utils.data.random_split(dataset, [int(len(dataset)*(1-val_fraction)), int(len(dataset)*val_fraction)+1])
-        loader_train = DataLoader(trainig_dataset, batch_size=64, shuffle = True)
+        loader_train = DataLoader(trainig_dataset, batch_size=self.batch_size, shuffle = True)
         loader_val = DataLoader(val_dataset, batch_size=64, shuffle = True)
 
         return loader_train, loader_val
 
+                
 
-    def _loss_function(self,mean, std, logmix, true, target_weights):
-        log_prob =   logmix - 0.5*(mean - true[:,None]).pow(2) / std.pow(2) - torch.log(std)
 
-        log_prob = torch.logsumexp(log_prob, 1)
+    def _loss_function(self,mean, std, logmix, true):
+                
+        logerf = torch.log(erf(true.cpu()[:,None]/(np.sqrt(2)*std.detach().cpu())+1))
         
-        #log_prob = log_prob * target_weights
+        log_prob =   logmix - 0.5*(mean - true[:,None]).pow(2) / std.pow(2) - torch.log(std) #- logerf.to(self.device)
+        log_prob = torch.logsumexp(log_prob, 1)
         loss = -log_prob.mean()
 
         return loss     
@@ -43,21 +46,25 @@ class Insight_module():
     def _to_numpy(self,x):
         return x.detach().cpu().numpy()
         
-    def train(self,input_data, target_data, target_weights,  nepochs=10, val_fraction=0.1, lr=1e-3 ):
+    def train(self,input_data, target_data,  nepochs=10, step_size = 100, val_fraction=0.1, lr=1e-3 ):
         self.model = self.model.train()
-        loader_train, loader_val = self._get_dataloaders(input_data, target_data, target_weights, val_fraction=0.1)
+        loader_train, loader_val = self._get_dataloaders(input_data, target_data, val_fraction=0.1)
         optimizer = optim.Adam(self.model.parameters(), lr=lr, weight_decay=1e-4)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma =0.1)
+    
         
         self.model = self.model.to(self.device)
         
-        loss_train, loss_validation = [],[]
+        self.loss_train, self.loss_validation = [],[]
+        
+        
 
         for epoch in range(nepochs):
-            for input_data, target_data, target_weights in loader_train:
+            for input_data, target_data in loader_train:
+                _loss_train, _loss_validation = [],[]
 
                 input_data = input_data.to(self.device)
                 target_data = target_data.to(self.device)
-                target_weights = target_weights.to(self.device)
 
 
                 optimizer.zero_grad()
@@ -69,32 +76,33 @@ class Insight_module():
 
                 #print(mu,sig,target_data,torch.exp(logmix_coeff))
 
-                loss = self._loss_function(mu, sig, logmix_coeff, target_data,target_weights)
+                loss = self._loss_function(mu, sig, logmix_coeff, target_data)
+                _loss_train.append(loss.item())
                 
                 loss.backward()
-                optimizer.step()  
+                optimizer.step()
+            
+            scheduler.step()   
                                 
-            loss_train.append(loss.item())
+            self.loss_train.append(np.mean(_loss_train))
 
-            for input_data, target_data, target_weights in loader_val:
+            for input_data, target_data in loader_val:
 
 
                 input_data = input_data.to(self.device)
                 target_data = target_data.to(self.device)
-                target_weights = target_weights.to(self.device)
 
 
                 mu, logsig, logmix_coeff = self.model(input_data)
                 logsig = torch.clamp(logsig,-6,2)
                 sig = torch.exp(logsig)
 
-                loss_val = self._loss_function(mu, sig, logmix_coeff, target_data, target_weights)
-            loss_validation.append(loss_val.item())
+                loss_val = self._loss_function(mu, sig, logmix_coeff, target_data)
+                _loss_validation.append(loss_val.item())
 
-            print(f'training_loss:{loss}',f'testing_loss:{loss_val}')
-            
-        self.loss_train=loss_train
-        self.loss_validation=loss_validation
+            self.loss_validation.append(np.mean(_loss_validation))
+
+            #print(f'training_loss:{loss}',f'testing_loss:{loss_val}')
            
             
     def get_photoz(self,input_data, target_data):
