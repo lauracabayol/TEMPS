@@ -1,5 +1,8 @@
 from torch import nn, optim
 import torch
+
+from torch import nn, optim
+import torch
 class Photoz_network(nn.Module):
     def __init__(self, num_gauss=10, dropout_prob=0):
         super(Photoz_network, self).__init__()
@@ -41,14 +44,17 @@ class Photoz_network(nn.Module):
             nn.Linear(20, num_gauss)
         )
         
+        
     def forward(self, x):
         f = self.features(x)
         mu = self.measure_mu(f)
         sigma = self.measure_sigma(f)
         logmix_coeff = self.measure_coeffs(f)
-        
+                
         logmix_coeff = logmix_coeff - torch.logsumexp(logmix_coeff, 1)[:,None]
-
+        
         return mu, sigma, logmix_coeff
+
+            
     
 
