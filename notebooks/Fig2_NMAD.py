@@ -76,6 +76,9 @@ cat = cat[(cat['z_spec_S15'] > 0) | (cat['photo_z_L15'] > 0)]
 
 
 # %%
+cat.shape
+
+# %%
 ztarget = [cat['z_spec_S15'].values[ii] if cat['z_spec_S15'].values[ii]> 0 else cat['photo_z_L15'].values[ii] for ii in range(len(cat))]
 specz_or_photo = [0 if cat['z_spec_S15'].values[ii]> 0 else 1 for ii in range(len(cat))]
 ID = cat['ID']
@@ -88,7 +91,7 @@ f, ferr = photoz_archive._extract_fluxes(catalogue= cat)
 col, colerr = photoz_archive._to_colors(f, ferr)
 
 # %% [markdown]
-# ### TRAIN METHODS
+# ### EVALUATE USING TRAINED MODELS
 
 # %%
 if train_methods:
