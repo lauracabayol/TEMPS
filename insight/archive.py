@@ -13,7 +13,7 @@ rcParams["font.family"] = "STIXGeneral"
 
 
 class archive():
-    def __init__(self, path, aperture=2, drop_stars=True, clean_photometry=True, convert_colors=True, extinction_corr=True, only_zspec=True, only_zspec_test=True, flags_kept=[3,3.1,3.4,3.5,4]):
+    def __init__(self, path, aperture=2, drop_stars=True, clean_photometry=True, convert_colors=True, extinction_corr=True, only_zspec=True, target_test='specz', flags_kept=[3,3.1,3.4,3.5,4]):
         
         self.aperture = aperture
         self.flags_kept=flags_kept
@@ -25,6 +25,8 @@ class archive():
         
         hdu_list = fits.open(os.path.join(path,filename_calib))
         cat = Table(hdu_list[1].data).to_pandas()
+        cat = cat[(cat['z_spec_S15'] > 0) | (cat['photo_z_L15'] > 0)]
+
         
         hdu_list = fits.open(os.path.join(path,filename_valid))
         cat_test = Table(hdu_list[1].data).to_pandas()
@@ -40,10 +42,20 @@ class archive():
             
         
         cat = self._set_combiend_target(cat)
-            
+        cat_test = self._set_combiend_target(cat_test)
+        
+        
+        
+        cat = cat[cat.MAG_VIS<25]
+        cat_test = cat_test[cat_test.MAG_VIS<25]
+        
+        cat = cat[cat.target_z<5]
+        cat_test = cat_test[cat_test.target_z<5]
+        
+                    
                     
         self._set_training_data(cat, only_zspec=only_zspec, extinction_corr=extinction_corr, convert_colors=convert_colors)
-        self._set_testing_data(cat_test, only_zspec=only_zspec_test, extinction_corr=extinction_corr, convert_colors=convert_colors)
+        self._set_testing_data(cat_test, target=target_test, extinction_corr=extinction_corr, convert_colors=convert_colors)
         
             
     def _extract_fluxes(self,catalogue):
@@ -80,12 +92,25 @@ class archive():
         f = f * ext_correction
         return f
     
-    def _take_only_zspec(self,catalogue,cat_flag=None):
+    def _select_only_zspec(self,catalogue,cat_flag=None):
         """Selects only galaxies with spectroscopic redshift"""
         if cat_flag=='Calib':
             catalogue = catalogue[catalogue.z_spec_S15>0]
         elif cat_flag=='Valid':
             catalogue = catalogue[catalogue.z_spec_S15>0]
+        return catalogue
+    
+    def _exclude_only_zspec(self,catalogue):
+        """Selects only galaxies without spectroscopic redshift"""
+        catalogue = catalogue[(catalogue.z_spec_S15<0)&(catalogue.photo_z_L15>0)&(catalogue.photo_z_L15<4)]
+        return catalogue
+    
+    def _select_L15_sample(self,catalogue):
+        """Selects only galaxies withoutidx spectroscopic redshift"""
+        catalogue = catalogue[(catalogue.target_z>0)]
+        catalogue = catalogue[(catalogue.target_z<4)]
+
+
         return catalogue
     
     def _take_zspec_and_photoz(self,catalogue,cat_flag=None):
@@ -127,10 +152,12 @@ class archive():
     
     def _set_training_data(self,catalogue, only_zspec=True, extinction_corr=True, convert_colors=True):
         
-        
+        cat_da = self._exclude_only_zspec(catalogue)  
+        target_z_train_DA = cat_da['photo_z_L15'].values
+  
         
         if only_zspec:
-            catalogue = self._take_only_zspec(catalogue, cat_flag='Calib')
+            catalogue = self._select_only_zspec(catalogue, cat_flag='Calib')
             catalogue = self._clean_zspec_sample(catalogue, flags_kept=self.flags_kept)
         else:
             catalogue = self._take_zspec_and_photoz(catalogue, cat_flag='Calib')
@@ -138,6 +165,12 @@ class archive():
             
         self.cat_train=catalogue
         f, ferr = self._extract_fluxes(catalogue)
+
+        f_DA, ferr_DA = self._extract_fluxes(cat_da)
+        idx = np.random.randint(0, len(f_DA), len(f))
+        f_DA, ferr_DA = f_DA[idx], ferr_DA[idx] 
+        target_z_train_DA = target_z_train_DA[idx]
+        self.target_z_train_DA = target_z_train_DA
         
         
         if extinction_corr==True:
@@ -145,12 +178,17 @@ class archive():
                     
         if convert_colors==True:
             col, colerr = self._to_colors(f, ferr)
-                        
+            col_DA, colerr_DA = self._to_colors(f_DA, ferr_DA)
+            
             self.phot_train = col
             self.photerr_train = colerr
+            self.phot_train_DA = col_DA
+            self.photerr_train_DA = colerr_DA
         else:
             self.phot_train = f
             self.photerr_train = ferr  
+            self.phot_train_DA = f_DA
+            self.photerr_train_DA = ferr_DA
             
         if only_zspec==True:
             self.target_z_train = catalogue['z_spec_S15'].values
@@ -159,16 +197,22 @@ class archive():
             
         self.VIS_mag_train = catalogue['MAG_VIS'].values
         
-    def _set_testing_data(self,catalogue, only_zspec=True, extinction_corr=True, convert_colors=True):
- 
-        if only_zspec:
-            catalogue = self._take_only_zspec(catalogue, cat_flag='Valid')
+    def _set_testing_data(self,catalogue, target='specz', extinction_corr=True, convert_colors=True):
+        
+        if target=='specz':
+            catalogue = self._select_only_zspec(catalogue, cat_flag='Valid')
             catalogue = self._clean_zspec_sample(catalogue)
+            self.target_z_test = catalogue['z_spec_S15'].values
             
+        elif target=='L15':
+            catalogue = self._select_L15_sample(catalogue)
+            catalogue = catalogue[(catalogue.target_z>0.2)&(catalogue.target_z<2.6)]
+            self.target_z_test = catalogue['target_z'].values
+            
+                        
         self.cat_test=catalogue
             
         f, ferr = self._extract_fluxes(catalogue)
-                
         
         if extinction_corr==True:
             f = self._correct_extinction(catalogue,f)
@@ -181,12 +225,12 @@ class archive():
             self.phot_test = f
             self.photerr_test = ferr  
             
-        self.target_z_test = catalogue['z_spec_S15'].values
+        
         self.VIS_mag_test = catalogue['MAG_VIS'].values
             
         
     def get_training_data(self):
-        return self.phot_train, self.photerr_train, self.target_z_train, self.VIS_mag_train
+        return self.phot_train, self.photerr_train, self.target_z_train, self.VIS_mag_train, self.phot_train_DA, self.photerr_train_DA, self.target_z_train_DA
 
     def get_testing_data(self):
         return self.phot_test, self.photerr_test, self.target_z_test, self.VIS_mag_test

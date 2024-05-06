@@ -10,29 +10,38 @@ from astropy.table import Table
 from scipy.spatial import KDTree
 from scipy.special import erf
 from scipy.stats import norm
+import sys
+
+sys.path.append('/.')
+from utils import maximum_mean_discrepancy, compute_kernel
 
 class Insight_module():
     """ Define class"""
     
-    def __init__(self, model, batch_size=100,rejection_param=1):
-        self.model=model
+    def __init__(self, modelF, modelZ, batch_size=100,rejection_param=1, da=True, verbose=False):
+        self.modelZ=modelZ
+        self.modelF=modelF
+        self.da=da
+        self.verbose=verbose
+        self.ngaussians=modelZ.ngaussians
+
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.batch_size=batch_size
         self.rejection_parameter=rejection_param
         
             
             
-    def _get_dataloaders(self, input_data, target_data, additional_data=None, val_fraction=0.1):
+    def _get_dataloaders(self, input_data, target_data, input_data_DA, target_data_DA, val_fraction=0.1):
         input_data = torch.Tensor(input_data)
         target_data = torch.Tensor(target_data)
-        
-        if additional_data is None:
-            dataset = TensorDataset(input_data, target_data)
+        if input_data_DA is not None:
+            input_data_DA = torch.Tensor(input_data_DA)
+            target_data_DA = torch.Tensor(target_data_DA)
         else:
-            additional_data = torch.Tensor(additional_data)
-            dataset = TensorDataset(input_data, target_data,additional_data)
-                    
-
+            input_data_DA = input_data.clone()
+            target_data_DA = target_data.clone()
+            
+        dataset = TensorDataset(input_data, input_data_DA, target_data, target_data_DA)
         trainig_dataset, val_dataset = torch.utils.data.random_split(dataset, [int(len(dataset)*(1-val_fraction)), int(len(dataset)*val_fraction)+1])
         loader_train = DataLoader(trainig_dataset, batch_size=self.batch_size, shuffle = True)
         loader_val = DataLoader(val_dataset, batch_size=64, shuffle = True)
@@ -48,61 +57,103 @@ class Insight_module():
         log_prob = torch.logsumexp(log_prob, 1)
         loss = -log_prob.mean()
             
-
-        return loss     
+        return loss  
+    
+    def _loss_function_DA(self,f1, f2):
+        kl_loss = nn.KLDivLoss(reduction="batchmean",log_target=True)
+        loss = kl_loss(f1, f2)
+        loss = torch.log(loss)
+        #print('f1',f1)
+        #print('f2',f2)
+        
+        return loss   
 
     def _to_numpy(self,x):
         return x.detach().cpu().numpy()
     
        
         
-    def train(self,input_data, target_data,  nepochs=10, step_size = 100, val_fraction=0.1, lr=1e-3 ):
-        self.model = self.model.train()
-        loader_train, loader_val = self._get_dataloaders(input_data, target_data, val_fraction=0.1)
-        optimizer = optim.Adam(self.model.parameters(), lr=lr, weight_decay=1e-4)
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma =0.1)
-    
+    def train(self,input_data, 
+              input_data_DA, 
+              target_data, 
+              target_data_DA, 
+              nepochs=10, 
+              step_size = 100,
+              val_fraction=0.1, 
+              lr=1e-3,
+             weight_decay=0):
+        self.modelZ = self.modelZ.train()
+        self.modelF = self.modelF.train()
+
+        loader_train, loader_val = self._get_dataloaders(input_data, target_data, input_data_DA, target_data_DA, val_fraction=0.1)
+        optimizerZ = optim.Adam(self.modelZ.parameters(), lr=lr, weight_decay=weight_decay)
+        optimizerF = optim.Adam(self.modelF.parameters(), lr=lr, weight_decay=weight_decay)
+
+        schedulerZ = torch.optim.lr_scheduler.StepLR(optimizerZ, step_size=step_size, gamma =0.1)
+        schedulerF = torch.optim.lr_scheduler.StepLR(optimizerF, step_size=step_size, gamma =0.1)    
         
-        self.model = self.model.to(self.device)
-        
+        self.modelZ = self.modelZ.to(self.device)
+        self.modelF = self.modelF.to(self.device)
+
         self.loss_train, self.loss_validation = [],[]
         
-        
-
         for epoch in range(nepochs):
-            for input_data, target_data in loader_train:
+            for input_data, input_data_da, target_data, target_data_DA  in loader_train:
                 _loss_train, _loss_validation = [],[]
 
                 input_data = input_data.to(self.device)
                 target_data = target_data.to(self.device)
+                
+                if self.da:
+                    input_data_da = input_data_da.to(self.device)
+                    target_data_DA = target_data_DA.to(self.device)
 
+                optimizerF.zero_grad()
+                optimizerZ.zero_grad()
 
-                optimizer.zero_grad()
+                features = self.modelF(input_data)
+                if self.da:
+                    features_DA = self.modelF(input_data_da)
 
-                mu, logsig, logmix_coeff = self.model(input_data)
+                mu, logsig, logmix_coeff = self.modelZ(features)
                 logsig = torch.clamp(logsig,-6,2)
                 sig = torch.exp(logsig)
 
-
-
-                loss = self._loss_function(mu, sig, logmix_coeff, target_data)
-                _loss_train.append(loss.item())
+                lossZ = self._loss_function(mu, sig, logmix_coeff, target_data)
                 
+                #mu, logsig, logmix_coeff = self.modelZ(features_DA)
+                #logsig = torch.clamp(logsig,-6,2)
+                #sig = torch.exp(logsig)   
+                
+                #lossZ_DA = self._loss_function(mu, sig, logmix_coeff, target_data_DA)
+
+                if self.da:
+                    lossDA = maximum_mean_discrepancy(features, features_DA, kernel_type='rbf')
+                    lossDA = lossDA.sum()
+                    loss = lossZ +1e3*lossDA
+                else:
+                    loss = lossZ
+                                
+                _loss_train.append(lossZ.item())
+                                
                 loss.backward()
-                optimizer.step()
+                optimizerF.step()
+                optimizerZ.step()
             
-            scheduler.step()   
+            schedulerF.step()   
+            schedulerZ.step()   
                                 
             self.loss_train.append(np.mean(_loss_train))
 
-            for input_data, target_data in loader_val:
-
+            for input_data, _, target_data, _ in loader_val:
 
                 input_data = input_data.to(self.device)
                 target_data = target_data.to(self.device)
 
 
-                mu, logsig, logmix_coeff = self.model(input_data)
+                features = self.modelF(input_data)
+                mu, logsig, logmix_coeff = self.modelZ(features)   
+                
                 logsig = torch.clamp(logsig,-6,2)
                 sig = torch.exp(logsig)
 
@@ -110,41 +161,79 @@ class Insight_module():
                 _loss_validation.append(loss_val.item())
 
             self.loss_validation.append(np.mean(_loss_validation))
+            
+            
+            if self.verbose:
 
-            print(f'training_loss:{loss}',f'testing_loss:{loss_val}')
+                print(f'training_loss:{loss}',f'testing_loss:{loss_val}')
            
+
+    def get_features(self, input_data):
+        self.modelF = self.modelF.eval()
+        self.modelF = self.modelF.to(self.device)
+        
+        input_data = input_data.to(self.device)
+        
+        features = self.modelF(input_data)
+        
+        return features.detach().cpu().numpy()
         
 
-        
-    def get_pz(self,input_data, target_data, return_pz=False):
-        self.model = self.model.eval()
-        self.model = self.model.to(self.device)
+    def get_pz(self,input_data, return_pz=True, return_flag=True, retrun_odds=False):
+        self.modelZ = self.modelZ.eval()
+        self.modelZ = self.modelZ.to(self.device)
+        self.modelF = self.modelF.eval()
+        self.modelF = self.modelF.to(self.device)
 
         input_data = input_data.to(self.device)
-        target_data = target_data.to(self.device)
                 
 
-        
-        mu, logsig, logmix_coeff = self.model(input_data)
+        features = self.modelF(input_data)
+        mu, logsig, logmix_coeff = self.modelZ(features)
         logsig = torch.clamp(logsig,-6,2)
         sig = torch.exp(logsig)
 
         mix_coeff = torch.exp(logmix_coeff)
 
         z = (mix_coeff * mu).sum(1)
-        zerr = torch.sqrt( (mix_coeff * sig**2).sum(1) + (mix_coeff * (mu - target_data[:,None])**2).sum(1))
+        zerr = torch.sqrt( (mix_coeff * sig**2).sum(1) + (mix_coeff * (mu - mu.mean(1)[:,None])**2).sum(1))
 
         mu,  mix_coeff, sig = mu.detach().cpu().numpy(),  mix_coeff.detach().cpu().numpy(), sig.detach().cpu().numpy()
         
         
         if return_pz==True:
-            x = np.linspace(0, 4, 1000)
-            pdf_mixture = np.zeros(shape=(len(target_data), len(x)))
+            zgrid = np.linspace(0, 5, 1000)
+            pdf_mixture = np.zeros(shape=(len(input_data), len(zgrid)))
             for ii in range(len(input_data)):
-                for i in range(6):
-                    pdf_mixture[ii] += mix_coeff[ii,i] * norm.pdf(x, mu[ii,i], sig[ii,i])
+                for i in range(self.ngaussians):
+                    pdf_mixture[ii] += mix_coeff[ii,i] * norm.pdf(zgrid, mu[ii,i], sig[ii,i])
+            if return_flag==True:
+                #narrow peak
+                pdf_mixture = pdf_mixture / pdf_mixture.sum(1)[:,None]
+                diff_matrix = np.abs(self._to_numpy(z)[:,None] - zgrid[None,:])
+                #odds
+                idx_peak = np.argmax(pdf_mixture,1)
+                zpeak = zgrid[idx_peak]
+                diff_matrix_upper = np.abs((zpeak+0.05)[:,None] - zgrid[None,:])
+                diff_matrix_lower = np.abs((zpeak-0.05)[:,None] - zgrid[None,:])
+                
+                idx = np.argmin(diff_matrix,1)
+                idx_upper = np.argmin(diff_matrix_upper,1)
+                idx_lower = np.argmin(diff_matrix_lower,1)
+                
+                p_z_x = np.zeros(shape=(len(z)))
+                odds = np.zeros(shape=(len(z)))
 
-            return self._to_numpy(z),self._to_numpy(zerr), pdf_mixture
+                for ii in range(len(z)):
+                    p_z_x[ii] = pdf_mixture[ii,idx[ii]]
+                    odds[ii] = pdf_mixture[ii,:idx_upper[ii]].sum() - pdf_mixture[ii,:idx_lower[ii]].sum()
+                    
+
+                                        
+                return self._to_numpy(z),self._to_numpy(zerr), pdf_mixture, p_z_x, odds
+            else:
+
+                return self._to_numpy(z),self._to_numpy(zerr), pdf_mixture
     
         else:
             return self._to_numpy(z),self._to_numpy(zerr)
@@ -152,14 +241,18 @@ class Insight_module():
     def pit(self, input_data, target_data):
         
         pit_list = []
-        
-        self.model = self.model.eval()
-        self.model = self.model.to(self.device)
+
+        self.modelF = self.modelF.eval()
+        self.modelF = self.modelF.to(self.device)
+        self.modelZ = self.modelZ.eval()
+        self.modelZ = self.modelZ.to(self.device)
 
         input_data = input_data.to(self.device)
                 
 
-        mu, logsig, logmix_coeff = self.model(input_data)
+        features = self.modelF(input_data)
+        mu, logsig, logmix_coeff = self.modelZ(features)
+        
         logsig = torch.clamp(logsig,-6,2)
         sig = torch.exp(logsig)
 
@@ -188,13 +281,16 @@ class Insight_module():
 
         crps_list = []
 
-        self.model = self.model.eval()
-        self.model = self.model.to(self.device)
+        self.modelF = self.modelF.eval()
+        self.modelF = self.modelF.to(self.device)
+        self.modelZ = self.modelZ.eval()
+        self.modelZ = self.modelZ.to(self.device)
 
         input_data = input_data.to(self.device)
 
 
-        mu, logsig, logmix_coeff = self.model(input_data)
+        features = self.modelF(input_data)
+        mu, logsig, logmix_coeff = self.modelZ(features)
         logsig = torch.clamp(logsig,-6,2)
         sig = torch.exp(logsig)
 
@@ -221,64 +317,6 @@ class Insight_module():
 
 
         return crps_value
-            
-
-    def plot_photoz(self, df, nbins,xvariable,metric, type_bin='bin'):
-        bin_edges = stats.mstats.mquantiles(df[xvariable].values, np.linspace(0.1,1,nbins))
-        ydata,xlab = [],[]
 
 
-        for k in range(len(bin_edges)-1):
-            edge_min = bin_edges[k]
-            edge_max = bin_edges[k+1]
-
-            mean_mag =  (edge_max + edge_min) / 2
-
-            if type_bin=='bin':
-                df_plot = df_test[(df_test.imag > edge_min) & (df_test.imag < edge_max)]
-            elif type_bin=='cum':
-                df_plot = df_test[(df_test.imag < edge_max)]
-            else:
-                raise ValueError("Only type_bin=='bin' for binned and 'cum' for cumulative are supported")
-
-
-            xlab.append(mean_mag)
-            if metric=='sig68':
-                ydata.append(sigma68(df_plot.zwerr))
-            elif metric=='bias':
-                ydata.append(np.mean(df_plot.zwerr))
-            elif metric=='nmad':
-                ydata.append(nmad(df_plot.zwerr))
-            elif metric=='outliers':
-                ydata.append(len(df_plot[np.abs(df_plot.zwerr)>0.15])/len(df_plot))
-
-        plt.plot(xlab,ydata, ls = '-', marker = '.', color = 'navy',lw = 1, label = '')
-        plt.ylabel(f'{metric}$[\Delta z]$', fontsize = 18)
-        plt.xlabel(f'{xvariable}', fontsize = 16)
-
-        plt.xticks(fontsize = 14)
-        plt.yticks(fontsize = 14)
-
-        plt.grid(False)
-
-        plt.show()
-   
         
-    def plot_pz(self, m, pz, specz):
-        # Create a figure and axis
-        fig, ax = plt.subplots(figsize=(8, 6))
-
-        # Plot the PDF with a label
-        ax.plot(np.linspace(0, 4, 1000), pz[m], label='PDF', color='navy')
-
-        # Add a vertical line for 'specz_test'
-        ax.axvline(specz[m], color='black', linestyle='--', label=r'$z_{\rm s}$')
-
-        # Add labels and a legend
-        ax.set_xlabel(r'$z$', fontsize = 18)
-        ax.set_ylabel('Probability Density', fontsize=16)
-        ax.legend(fontsize = 18)
-
-        # Display the plot
-        plt.show()
-    

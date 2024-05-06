@@ -1,2 +1,6 @@
-/insight/__pycache__/
-/insight/notebooks/.ipynb_checkpoints/
+/insight/__pycache__/*
+/notebooks/.ipynb_checkpoints/
+/notebooks/*.ipynb
+/notebooks/developer_notebooks
+insight/.ipynb_checkpoints/
+*.ipynb
