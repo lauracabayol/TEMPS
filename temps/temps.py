@@ -15,7 +15,7 @@ import sys
 sys.path.append('/.')
 from utils import maximum_mean_discrepancy, compute_kernel
 
-class Insight_module():
+class Temps_module():
     """ Define class"""
     
     def __init__(self, modelF, modelZ, batch_size=100,rejection_param=1, da=True, verbose=False):
