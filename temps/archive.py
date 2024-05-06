@@ -54,8 +54,14 @@ class archive():
         
                     
                     
-        self._set_training_data(cat, only_zspec=only_zspec, extinction_corr=extinction_corr, convert_colors=convert_colors)
-        self._set_testing_data(cat_test, target=target_test, extinction_corr=extinction_corr, convert_colors=convert_colors)
+        self._set_training_data(cat, 
+                                only_zspec=only_zspec, 
+                                extinction_corr=extinction_corr, 
+                                convert_colors=convert_colors)
+        self._set_testing_data(cat_test, 
+                               target=target_test, 
+                               extinction_corr=extinction_corr, 
+                               convert_colors=convert_colors)
         
             
     def _extract_fluxes(self,catalogue):
@@ -73,7 +79,9 @@ class archive():
         return color,color_err
     
     def _set_combiend_target(self, catalogue):
-        catalogue['target_z'] = catalogue.apply(lambda row: row['z_spec_S15'] if row['z_spec_S15'] > 0 else row['photo_z_L15'], axis=1)
+        catalogue['target_z'] = catalogue.apply(lambda row: row['z_spec_S15'] 
+                                                if row['z_spec_S15'] > 0 
+                                                else row['photo_z_L15'], axis=1)
         
         return catalogue
 
@@ -206,9 +214,8 @@ class archive():
             
         elif target=='L15':
             catalogue = self._select_L15_sample(catalogue)
-            catalogue = catalogue[(catalogue.target_z>0.2)&(catalogue.target_z<2.6)]
             self.target_z_test = catalogue['target_z'].values
-            
+                    
                         
         self.cat_test=catalogue
             
