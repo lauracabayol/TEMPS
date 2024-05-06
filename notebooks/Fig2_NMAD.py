@@ -44,7 +44,7 @@ rcParams["font.family"] = "STIXGeneral"
 # %%
 #insight modules
 import sys
-sys.path.append('../insight')
+sys.path.append('../temps')
 #from insight_arch import EncoderPhotometry, MeasureZ
 #from insight import Insight_module
 from archive import archive 
@@ -133,91 +133,6 @@ if not train_methods:
 
 # %% [markdown]
 # ### MAKE PLOT
-
-# %%
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy import stats
-
-def plot_photoz(df_list, nbins, xvariable, metric, type_bin='bin',label_list=None, samp='zs', save=False):
-    #plot properties
-    plt.rcParams['font.family'] = 'serif'
-    plt.rcParams['font.size'] = 12
-    
-    if xvariable == 'VISmag':
-        xvariable_lab = 'VIS'
-    if xvariable == 'zs':
-        xvariable_lab = r'$z_{\rm s}$'
-
-    bin_edges = stats.mstats.mquantiles(df_list[0][xvariable].values, np.linspace(0.05, 1, nbins))
-    cmap = plt.get_cmap('Dark2')  # Choose a colormap for coloring lines
-    #plt.figure(figsize=(6, 5))
-    ls = ['--',':','-']
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8), gridspec_kw={'height_ratios': [3, 1]})
-    
-    ydata_dict = {}
-
-    for i, df in enumerate(df_list):
-        ydata, xlab = [], []
-        
-        label = label_list[i]
-        
-        if label == 'zs':
-            label_lab = r'$z_{\rm s}$'
-        if label == 'zs+L15':
-            label_lab = r'$z_{\rm s}$+L15'    
-        if label == 'TEMPS':
-            label_lab = 'TEMPS'   
-
-        for k in range(len(bin_edges)-1):
-            edge_min = bin_edges[k]
-            edge_max = bin_edges[k+1]
-
-            mean_mag = (edge_max + edge_min) / 2
-
-            if type_bin == 'bin':
-                df_plot = df[(df[xvariable] > edge_min) & (df[xvariable] < edge_max)]
-            elif type_bin == 'cum':
-                df_plot = df[(df[xvariable] < edge_max)]
-            else:
-                raise ValueError("Only type_bin=='bin' for binned and 'cum' for cumulative are supported")
-
-            xlab.append(mean_mag)
-            if metric == 'sig68':
-                ydata.append(sigma68(df_plot.zwerr))
-            elif metric == 'bias':
-                ydata.append(np.mean(df_plot.zwerr))
-            elif metric == 'nmad':
-                ydata.append(nmad(df_plot.zwerr))
-            elif metric == 'outliers':
-                ydata.append(len(df_plot[np.abs(df_plot.zwerr) > 0.15]) / len(df_plot)*100)
-                
-        ydata_dict[f'{i}'] = ydata
-        color = cmap(i)  # Get a different color for each dataframe
-        ax1.plot(xlab, ydata,marker='.', lw=1, label=label_lab, color=color, ls=ls[i])
-        
-
-
-    ax1.set_ylabel(f'{metric} $[\Delta z]$', fontsize=18)
-    #ax1.set_xlabel(f'{xvariable_lab}', fontsize=16)
-    ax1.grid(False)
-    ax1.legend()
-    
-    # Plot ratios between lines in the upper panel
-    
-    ax2.plot(xlab, np.array(ydata_dict['1'])/np.array(ydata_dict['0']), marker='.', color = cmap(1))
-    ax2.plot(xlab, np.array(ydata_dict['2'])/np.array(ydata_dict['0']), marker='.', color = cmap(2))
-    ax2.set_ylabel(r'Method $X$ / $z_{\rm z}$', fontsize=14)
-   
-
-    ax2.set_xlabel(f'{xvariable_lab}', fontsize=16)
-    ax2.grid(True)
-
-    
-    if save==True:
-        plt.savefig(f'{metric}_{xvariable}_{samp}.pdf', dpi=300, bbox_inches='tight')
-    plt.show()
-
 
 # %%
 dfs['z'] = dfs['z'][(dfs['z'].VISmag<24.5)&(dfs['z'].z<4)&(dfs['z'].zs>0)]
