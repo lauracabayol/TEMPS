@@ -281,3 +281,55 @@ def plot_nz(df_list, zcuts = [0.1, 0.5, 1, 1.5, 2, 3, 4]):
     plt.savefig(f'nz_hist.pdf', dpi=300, bbox_inches='tight')
     
     plt.show()
+
+    
+    
+
+def plot_crps(crps_list_1, crps_list_2 = None, crps_list_3=None, labels=None,  sample='specz', save =True):
+    # Create a figure and axis
+    #plot properties
+    plt.rcParams['font.family'] = 'serif'
+    plt.rcParams['font.size'] = 12
+    fig, ax = plt.subplots(figsize=(8, 6))
+    cmap = plt.get_cmap('Dark2')
+
+    kwargs=dict(bins=50, histtype='step', density=True, range=(0,1))
+
+    # Create a histogram
+    hist, bins, _ = ax.hist(crps_list_1,  color=cmap(0), ls='--', **kwargs, label=labels[0])
+    if crps_list_2 is not None:
+        hist, bins, _ = ax.hist(crps_list_2,  color=cmap(1), ls=':', **kwargs, label=labels[1])
+    if crps_list_3 is not None:
+        hist, bins, _ = ax.hist(crps_list_3,  color=cmap(2), ls='-', **kwargs, label=labels[2])
+
+    # Add labels and a title
+    ax.set_xlabel('CRPS Scores', fontsize = 18)
+    ax.set_ylabel('Frequency', fontsize = 18)
+
+    # Add grid lines
+    ax.grid(True, linestyle='--', alpha=0.7)
+
+    # Customize the x-axis
+    ax.set_xlim(0, 0.5)
+
+    # Make ticks larger
+    ax.tick_params(axis='both', which='major', labelsize=14)
+
+    # Calculate the mean CRPS value
+    mean_crps_1 = round(np.nanmean(crps_list_1), 2)
+    mean_crps_2 = round(np.nanmean(crps_list_2), 2)
+    mean_crps_3 = round(np.nanmean(crps_list_3), 2)
+
+
+    # Add the mean CRPS value at the top-left corner
+    ax.annotate(f"Mean CRPS {labels[0]}: {mean_crps_1}", xy=(0.57, 0.9), xycoords='axes fraction', fontsize=14, color =cmap(0))
+    ax.annotate(f"Mean CRPS {labels[1]}: {mean_crps_2}", xy=(0.57, 0.85), xycoords='axes fraction', fontsize=14, color =cmap(1))
+    ax.annotate(f"Mean CRPS {labels[2]}: {mean_crps_3}", xy=(0.57, 0.8), xycoords='axes fraction', fontsize=14, color =cmap(2))
+
+    
+    if save==True:
+        plt.savefig(f'{sample}_CRPS.pdf', bbox_inches='tight')
+
+    # Show the plot
+    plt.show()
+
