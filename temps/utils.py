@@ -166,3 +166,58 @@ def compute_kernel(x, y, kernel_type='rbf', kernel_mul=2.0, kernel_num=5):
 
     return kernel_matrix
 
+
+def select_cut(df, 
+               completenss_lim=None, 
+               nmad_lim = None, 
+               outliers_lim=None, 
+               return_df=False):
+    
+    
+    if (completenss_lim is None)&(nmad_lim is None)&(outliers_lim is None):
+        raise(ValueError("Select at least one cut"))
+    elif sum(c is not None for c in [completenss_lim, nmad_lim, outliers_lim]) > 1:
+        raise ValueError("Select only one cut at a time")
+    
+    else:
+        bin_edges = stats.mstats.mquantiles(df.zflag, np.arange(0,1.01,0.1))
+        scatter, eta, cmptnss, nobj = [],[],[], []
+
+        for k in range(len(bin_edges)-1):
+            edge_min = bin_edges[k]
+            edge_max = bin_edges[k+1]
+
+            df_bin = df[(df.zflag > edge_min)]    
+    
+
+            cmptnss.append(np.round(len(df_bin)/len(df),2)*100)
+            scatter.append(nmad(df_bin.zwerr))
+            eta.append(len(df_bin[np.abs(df_bin.zwerr)>0.15])/len(df_bin)*100)
+            nobj.append(len(df_bin))
+            
+        dfcuts = pd.DataFrame(data=np.c_[np.round(bin_edges[:-1],5), np.round(nobj,1), np.round(cmptnss,1), np.round(scatter,3), np.round(eta,2)], columns=['flagcut', 'Nobj','completeness', 'nmad', 'eta'])
+    
+    if completenss_lim is not None:
+        print('Selecting cut based on completeness')
+        selected_cut = dfcuts[dfcuts['completeness'] <= completenss_lim].iloc[0]
+        
+    
+    elif nmad_lim is not None:
+        print('Selecting cut based on nmad')
+        selected_cut = dfcuts[dfcuts['nmad'] <= nmad_lim].iloc[0]
+
+        
+    elif outliers_lim is not None:
+        print('Selecting cut based on outliers')
+        selected_cut = dfcuts[dfcuts['eta'] <= outliers_lim].iloc[0]
+
+
+    print(f"This cut provides completeness of {selected_cut['completeness']}, nmad={selected_cut['nmad']} and eta={selected_cut['eta']}")
+
+    df_cut = df[(df.zflag > selected_cut['flagcut'])]
+    if return_df==True:
+        return df_cut, selected_cut['flagcut'], dfcuts
+    else:
+        return selected_cut['flagcut'], dfcuts
+        
+
