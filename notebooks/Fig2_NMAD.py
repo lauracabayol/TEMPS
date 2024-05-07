@@ -32,6 +32,7 @@ import numpy as np
 import os
 from astropy.io import fits
 from astropy.table import Table
+import torch
 
 # %%
 #matplotlib settings
@@ -45,15 +46,16 @@ rcParams["font.family"] = "STIXGeneral"
 #insight modules
 import sys
 sys.path.append('../temps')
-#from insight_arch import EncoderPhotometry, MeasureZ
-#from insight import Insight_module
+
 from archive import archive 
 from utils import nmad
-from plots import plot_photoz
+from temps_arch import EncoderPhotometry, MeasureZ
+from temps import Temps_module
+
 
 
 # %%
-train_methods=False
+eval_methods=True
 
 # %% [markdown]
 # ### LOAD DATA
@@ -73,10 +75,9 @@ cat = Table(hdu_list[1].data).to_pandas()
 cat = cat[cat['FLAG_PHOT']==0]
 cat = cat[cat['mu_class_L07']==1]
 cat = cat[(cat['z_spec_S15'] > 0) | (cat['photo_z_L15'] > 0)]
+cat = cat[cat['MAG_VIS']<25]
 
 
-# %%
-cat.shape
 
 # %%
 ztarget = [cat['z_spec_S15'].values[ii] if cat['z_spec_S15'].values[ii]> 0 else cat['photo_z_L15'].values[ii] for ii in range(len(cat))]
@@ -94,9 +95,9 @@ col, colerr = photoz_archive._to_colors(f, ferr)
 # ### EVALUATE USING TRAINED MODELS
 
 # %%
-if train_methods:
-    dfs = {}
+if eval_methods:
 
+    dfs = {}
     for il, lab in enumerate(['z','L15','DA']):
 
         nn_features = EncoderPhotometry()
@@ -104,17 +105,16 @@ if train_methods:
         nn_z = MeasureZ(num_gauss=6)
         nn_z.load_state_dict(torch.load(os.path.join(modules_dir,f'modelZ_{lab}.pt')))
 
-        insight = Insight_module(nn_features, nn_z)
+        temps = Temps_module(nn_features, nn_z)
 
-        z,zerr, pz, flag = insight.get_pz(input_data=torch.Tensor(col), 
+        z,zerr, zmode,pz, flag, odds = temps.get_pz(input_data=torch.Tensor(col), 
                                     return_pz=True)
-
         # Create a DataFrame with the desired columns
-        df = pd.DataFrame(np.c_[ID, VISmag,z, flag, ztarget,zsflag,zerr, specz_or_photo], 
-                          columns=['ID','VISmag','z','zflag', 'ztarget','zsflag','zuncert','S15_L15_flag'])
+        df = pd.DataFrame(np.c_[ID, VISmag,z, zmode, flag, ztarget,zsflag,zerr, specz_or_photo], 
+                          columns=['ID','VISmag','z', 'zmode','zflag', 'ztarget','zsflag','zuncert','S15_L15_flag'])
 
         # Calculate additional columns or operations if needed
-        df['zwerr'] = (df.z - df.zs) / (1 + df.zs)
+        df['zwerr'] = (df.zmode - df.ztarget) / (1 + df.ztarget)
 
         # Drop any rows with NaN values
         df = df.dropna()
@@ -123,11 +123,17 @@ if train_methods:
         dfs[lab] = df
 
 
+
+# %%
+dfs['z']['zwerr'] = (dfs['z'].z - dfs['z'].ztarget) / (1 + dfs['z'].ztarget)
+dfs['L15']['zwerr'] = (dfs['L15'].z - dfs['L15'].ztarget) / (1 + dfs['L15'].ztarget)
+dfs['DA']['zwerr'] = (dfs['DA'].z - dfs['DA'].ztarget) / (1 + dfs['DA'].ztarget)
+
 # %% [markdown]
 # ### LOAD CATALOGUES FROM PREVIOUS TRAINING
 
 # %%
-if not train_methods:
+if not eval_methods:
     dfs = {}
     dfs['z'] = pd.read_csv(os.path.join(parent_dir, 'predictions_specztraining.csv'), header=0) 
     dfs['L15'] = pd.read_csv(os.path.join(parent_dir, 'predictions_speczL15training.csv'), header=0) 
@@ -138,20 +144,13 @@ if not train_methods:
 # ### MAKE PLOT
 
 # %%
-dfs['z'] = dfs['z'][(dfs['z'].VISmag<24.5)&(dfs['z'].z<4)&(dfs['z'].zs>0)]
-dfs['L15'] = dfs['L15'][(dfs['L15'].VISmag<24.5)&(dfs['L15'].z<4)&(dfs['L15'].zs>0)]
-dfs['DA'] = dfs['DA'][(dfs['DA'].VISmag<24.5)&(dfs['DA'].z<4)&(dfs['DA'].zs>0)]
-
-df_list = [dfs['z'],dfs['L15'],dfs['DA'] ]
-
-# %%
 plot_photoz(df_list,
             nbins=8, 
             xvariable='VISmag', 
             metric='nmad', 
             type_bin='bin', 
             label_list = ['zs','zs+L15',r'TEMPS'],
-            save=True,
+            save=False,
             samp='L15'
            )
 
@@ -162,7 +161,7 @@ plot_photoz(df_list,
             metric='outliers', 
             type_bin='bin', 
             label_list = ['zs','zs+L15',r'TEMPS'],
-            save=True,
+            save=False,
             samp='L15'
            )
 
