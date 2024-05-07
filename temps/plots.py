@@ -245,7 +245,9 @@ def plot_photoz(df_list, nbins, xvariable, metric, type_bin='bin',label_list=Non
     plt.show()
 
     
-def plot_nz(df_list, zcuts = [0.1, 0.5, 1, 1.5, 2, 3, 4]):
+def plot_nz(df_list, 
+            zcuts = [0.1, 0.5, 1, 1.5, 2, 3, 4],
+            save=False):
     # Plot properties
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.size'] = 16
@@ -260,10 +262,10 @@ def plot_nz(df_list, zcuts = [0.1, 0.5, 1, 1.5, 2, 3, 4]):
         ax = axs[i]  # Selecting the appropriate subplot
         
         for iz in range(len(zcuts)-1):
-            dfplot_z = dfplot[(dfplot['zs'] > zcuts[iz]) & (dfplot['zs'] < zcuts[iz + 1])]
+            dfplot_z = dfplot[(dfplot['ztarget'] > zcuts[iz]) & (dfplot['ztarget'] < zcuts[iz + 1])]
             color = cmap(iz)  # Get a different color for each redshift
             
-            zt_mean = np.median(dfplot_z.zs.values)
+            zt_mean = np.median(dfplot_z.ztarget.values)
             zp_mean = np.median(dfplot_z.z.values)
 
             
@@ -278,7 +280,8 @@ def plot_nz(df_list, zcuts = [0.1, 0.5, 1, 1.5, 2, 3, 4]):
     
     axs[-1].set_xlabel(f'$z$', fontsize=18)
     
-    plt.savefig(f'nz_hist.pdf', dpi=300, bbox_inches='tight')
+    if save:
+        plt.savefig(f'nz_hist.pdf', dpi=300, bbox_inches='tight')
     
     plt.show()
 
