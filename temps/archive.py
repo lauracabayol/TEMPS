@@ -13,7 +13,14 @@ rcParams["font.family"] = "STIXGeneral"
 
 
 class archive():
-    def __init__(self, path, aperture=2, drop_stars=True, clean_photometry=True, convert_colors=True, extinction_corr=True, only_zspec=True, target_test='specz', flags_kept=[3,3.1,3.4,3.5,4]):
+    def __init__(self, path, 
+                 aperture=2, 
+                 drop_stars=True, 
+                 clean_photometry=True, 
+                 convert_colors=True, 
+                 extinction_corr=True, 
+                 only_zspec=True, 
+                 target_test='specz', flags_kept=[3,3.1,3.4,3.5,4]):
         
         self.aperture = aperture
         self.flags_kept=flags_kept
@@ -75,7 +82,8 @@ class archive():
     def _to_colors(self, flux, fluxerr):
         """ Convert fluxes to colors"""
         color = flux[:,:-1] / flux[:,1:]
-        color_err = fluxerr[:,:-1]**2 / flux[:,1:]**2 + flux[:,:-1]**2 / flux[:,1:]**4 * fluxerr[:,:-1]**2
+        
+        color_err = np.sqrt((fluxerr[:,:-1]/ flux[:,1:])**2 + (flux[:,:-1] / flux[:,1:]**2)**2 * fluxerr[:,1:]**2)
         return color,color_err
     
     def _set_combiend_target(self, catalogue):
