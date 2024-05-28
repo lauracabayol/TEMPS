@@ -31,17 +31,15 @@ class Temps_module():
         
             
             
-    def _get_dataloaders(self, input_data, target_data, input_data_DA, target_data_DA, val_fraction=0.1):
+    def _get_dataloaders(self, input_data, target_data, input_data_DA, val_fraction=0.1):
         input_data = torch.Tensor(input_data)
         target_data = torch.Tensor(target_data)
         if input_data_DA is not None:
             input_data_DA = torch.Tensor(input_data_DA)
-            target_data_DA = torch.Tensor(target_data_DA)
         else:
             input_data_DA = input_data.clone()
-            target_data_DA = target_data.clone()
             
-        dataset = TensorDataset(input_data, input_data_DA, target_data, target_data_DA)
+        dataset = TensorDataset(input_data, input_data_DA, target_data)
         trainig_dataset, val_dataset = torch.utils.data.random_split(dataset, [int(len(dataset)*(1-val_fraction)), int(len(dataset)*val_fraction)+1])
         loader_train = DataLoader(trainig_dataset, batch_size=self.batch_size, shuffle = True)
         loader_val = DataLoader(val_dataset, batch_size=64, shuffle = True)
@@ -76,7 +74,6 @@ class Temps_module():
     def train(self,input_data, 
               input_data_DA, 
               target_data, 
-              target_data_DA, 
               nepochs=10, 
               step_size = 100,
               val_fraction=0.1, 
@@ -85,7 +82,7 @@ class Temps_module():
         self.modelZ = self.modelZ.train()
         self.modelF = self.modelF.train()
 
-        loader_train, loader_val = self._get_dataloaders(input_data, target_data, input_data_DA, target_data_DA, val_fraction=0.1)
+        loader_train, loader_val = self._get_dataloaders(input_data, target_data, input_data_DA, val_fraction=0.1)
         optimizerZ = optim.Adam(self.modelZ.parameters(), lr=lr, weight_decay=weight_decay)
         optimizerF = optim.Adam(self.modelF.parameters(), lr=lr, weight_decay=weight_decay)
 
@@ -98,7 +95,7 @@ class Temps_module():
         self.loss_train, self.loss_validation = [],[]
         
         for epoch in range(nepochs):
-            for input_data, input_data_da, target_data, target_data_DA  in loader_train:
+            for input_data, input_data_da, target_data  in loader_train:
                 _loss_train, _loss_validation = [],[]
 
                 input_data = input_data.to(self.device)
@@ -106,8 +103,8 @@ class Temps_module():
                 
                 if self.da:
                     input_data_da = input_data_da.to(self.device)
-                    target_data_DA = target_data_DA.to(self.device)
 
+                    
                 optimizerF.zero_grad()
                 optimizerZ.zero_grad()
 
@@ -120,12 +117,7 @@ class Temps_module():
                 sig = torch.exp(logsig)
 
                 lossZ = self._loss_function(mu, sig, logmix_coeff, target_data)
-                
-                #mu, logsig, logmix_coeff = self.modelZ(features_DA)
-                #logsig = torch.clamp(logsig,-6,2)
-                #sig = torch.exp(logsig)   
-                
-                #lossZ_DA = self._loss_function(mu, sig, logmix_coeff, target_data_DA)
+
 
                 if self.da:
                     lossDA = maximum_mean_discrepancy(features, features_DA, kernel_type='rbf')
@@ -145,7 +137,7 @@ class Temps_module():
                                 
             self.loss_train.append(np.mean(_loss_train))
 
-            for input_data, _, target_data, _ in loader_val:
+            for input_data, _, target_data in loader_val:
 
                 input_data = input_data.to(self.device)
                 target_data = target_data.to(self.device)
