@@ -20,9 +20,11 @@ class archive():
                  convert_colors=True, 
                  extinction_corr=True, 
                  only_zspec=True, 
+                 all_apertures=False,
                  target_test='specz', flags_kept=[3,3.1,3.4,3.5,4]):
         
         self.aperture = aperture
+        self.all_apertures=all_apertures
         self.flags_kept=flags_kept
         
         
@@ -62,6 +64,7 @@ class archive():
                     
                     
         self._set_training_data(cat, 
+                                cat_test,
                                 only_zspec=only_zspec, 
                                 extinction_corr=extinction_corr, 
                                 convert_colors=convert_colors)
@@ -72,18 +75,51 @@ class archive():
         
             
     def _extract_fluxes(self,catalogue):
-        columns_f = [f'FLUX_{x}_{self.aperture}' for x in ['G','R','I','Z','Y','J','H']]
-        columns_ferr = [f'FLUXERR_{x}_{self.aperture}' for x in ['G','R','I','Z','Y','J','H']]
+        if self.all_apertures:
+            columns_f = [f'FLUX_{x}_{a}' for a in [1,2,3] for x in ['G','R','I','Z','Y','J','H']] 
+            columns_ferr = [f'FLUXERR_{x}_{a}' for a in [1,2,3] for x in ['G','R','I','Z','Y','J','H'] ]
+        else:
+            columns_f = [f'FLUX_{x}_{self.aperture}' for x in ['G','R','I','Z','Y','J','H']]
+            columns_ferr = [f'FLUXERR_{x}_{self.aperture}' for x in ['G','R','I','Z','Y','J','H']]
 
         f = catalogue[columns_f].values
         ferr = catalogue[columns_ferr].values
         return f, ferr
     
+    def _extract_magnitudes(self,catalogue):
+        if self.all_apertures:
+            columns_m = [f'MAG_{x}_{a}' for a in [1,2,3] for x in ['G','R','I','Z','Y','J','H']] 
+            columns_merr = [f'MAGERR_{x}_{a}' for a in [1,2,3] for x in ['G','R','I','Z','Y','J','H'] ]
+        else:
+            columns_m = [f'MAG_{x}_{self.aperture}' for x in ['G','R','I','Z','Y','J','H']]
+            columns_merr = [f'MAGERR_{x}_{self.aperture}' for x in ['G','R','I','Z','Y','J','H']]
+
+        m = catalogue[columns_m].values
+        merr = catalogue[columns_merr].values
+        return m, merr
+    
     def _to_colors(self, flux, fluxerr):
         """ Convert fluxes to colors"""
-        color = flux[:,:-1] / flux[:,1:]
         
-        color_err = np.sqrt((fluxerr[:,:-1]/ flux[:,1:])**2 + (flux[:,:-1] / flux[:,1:]**2)**2 * fluxerr[:,1:]**2)
+        if self.all_apertures:
+
+            for a in range(3):
+                lim1 = 7*a
+                lim2 = 7*(a+1)
+                c = flux[:,lim1:(lim2-1)] / flux[:,(lim1+1):lim2]
+                cerr = np.sqrt((fluxerr[:,lim1:(lim2-1)]/ flux[:,(lim1+1):lim2])**2 + (flux[:,lim1:(lim2-1)] / flux[:,(lim1+1):lim2]**2)**2 * fluxerr[:,(lim1+1):lim2]**2)
+                
+                if a==0:
+                    color = c
+                    color_err = cerr
+                else:
+                    color = np.concatenate((color,c),axis=1)
+                    color_err = np.concatenate((color_err,cerr),axis=1)
+            
+        else:
+            color = flux[:,:-1] / flux[:,1:]
+
+            color_err = np.sqrt((fluxerr[:,:-1]/ flux[:,1:])**2 + (flux[:,:-1] / flux[:,1:]**2)**2 * fluxerr[:,1:]**2)
         return color,color_err
     
     def _set_combiend_target(self, catalogue):
@@ -100,13 +136,20 @@ class archive():
         
         return catalogue
     
-    def _correct_extinction(self,catalogue, f):
+    def _correct_extinction(self,catalogue, f, return_ext_corr=False):
         """Corrects for extinction"""
         ext_correction_cols =  [f'EB_V_corr_FLUX_{x}' for x in ['G','R','I','Z','Y','J','H']]
-        ext_correction = catalogue[ext_correction_cols].values
+        if self.all_apertures:
+            ext_correction = catalogue[ext_correction_cols].values
+            ext_correction = np.concatenate((ext_correction,ext_correction,ext_correction),axis=1)
+        else:
+            ext_correction = catalogue[ext_correction_cols].values
         
         f = f * ext_correction
-        return f
+        if return_ext_corr:
+            return f, ext_correction
+        else:
+            return f
     
     def _select_only_zspec(self,catalogue,cat_flag=None):
         """Selects only galaxies with spectroscopic redshift"""
@@ -166,9 +209,9 @@ class archive():
         return catalogue_valid
 
     
-    def _set_training_data(self,catalogue, only_zspec=True, extinction_corr=True, convert_colors=True):
+    def _set_training_data(self,catalogue, catalogue_da, only_zspec=True, extinction_corr=True, convert_colors=True):
         
-        cat_da = self._exclude_only_zspec(catalogue)  
+        cat_da = self._exclude_only_zspec(catalogue_da)  
         target_z_train_DA = cat_da['photo_z_L15'].values
   
         
@@ -181,7 +224,7 @@ class archive():
             
         self.cat_train=catalogue
         f, ferr = self._extract_fluxes(catalogue)
-
+        
         f_DA, ferr_DA = self._extract_fluxes(cat_da)
         idx = np.random.randint(0, len(f_DA), len(f))
         f_DA, ferr_DA = f_DA[idx], ferr_DA[idx] 
@@ -191,7 +234,7 @@ class archive():
         
         if extinction_corr==True:
             f = self._correct_extinction(catalogue,f)
-                    
+                                
         if convert_colors==True:
             col, colerr = self._to_colors(f, ferr)
             col_DA, colerr_DA = self._to_colors(f_DA, ferr_DA)
