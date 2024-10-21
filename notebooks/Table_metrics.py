@@ -5,11 +5,11 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.16.2
 #   kernelspec:
-#     display_name: insight
+#     display_name: temps
 #     language: python
-#     name: insight
+#     name: temps
 # ---
 
 # # TABLE METRICS
@@ -24,6 +24,7 @@ import torch
 from scipy import stats
 from astropy.io import fits
 from astropy.table import Table
+from pathlib import Path
 
 #matplotlib settings
 from matplotlib import rcParams
@@ -31,27 +32,22 @@ import matplotlib.pyplot as plt
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
-#insight modules
-import sys
-sys.path.append('../temps')
-#from insight_arch import EncoderPhotometry, MeasureZ
-#from insight import Insight_module
-from archive import archive 
-from utils import nmad, select_cut
-from temps_arch import EncoderPhotometry, MeasureZ
-from temps import Temps_module
+from temps.archive import Archive 
+from temps.utils import nmad, select_cut
+from temps.temps_arch import EncoderPhotometry, MeasureZ
+from temps.temps import TempsModule
 
 
 # ## LOAD DATA
 
 #define here the directory containing the photometric catalogues
-parent_dir = '/data/astro/scratch2/lcabayol/insight/data/Euclid_EXT_MER_PHZ_DC2_v1.5'
-modules_dir = '../data/models/'
+parent_dir = Path('/data/astro/scratch/lcabayol/insight/data/Euclid_EXT_MER_PHZ_DC2_v1.5')
+modules_dir = Path('../data/models/')
 
 # +
 filename_valid='euclid_cosmos_DC2_S1_v2.1_valid_matched.fits'
 
-hdu_list = fits.open(os.path.join(parent_dir,filename_valid))
+hdu_list = fits.open(parent_dir / filename_valid)
 cat = Table(hdu_list[1].data).to_pandas()
 cat = cat[cat['FLAG_PHOT']==0]
 cat = cat[cat['mu_class_L07']==1]
@@ -74,7 +70,7 @@ cat = cat[cat.ztarget>0]
 
 # ### EXTRACT PHOTOMETRY
 
-photoz_archive = archive(path = parent_dir,only_zspec=False)
+photoz_archive = Archive(path = parent_dir,only_zspec=False)
 f, ferr = photoz_archive._extract_fluxes(catalogue= cat)
 col, colerr = photoz_archive._to_colors(f, ferr)
 
@@ -84,19 +80,19 @@ col, colerr = photoz_archive._to_colors(f, ferr)
 # Initialize an empty dictionary to store DataFrames
 lab='DA'    
 nn_features = EncoderPhotometry()
-nn_features.load_state_dict(torch.load(os.path.join(modules_dir,f'modelF_{lab}.pt')))
+nn_features.load_state_dict(torch.load(modules_dir / f'modelF_{lab}.pt', map_location=torch.device('cpu')))
 nn_z = MeasureZ(num_gauss=6)
-nn_z.load_state_dict(torch.load(os.path.join(modules_dir,f'modelZ_{lab}.pt')))
+nn_z.load_state_dict(torch.load(modules_dir / f'modelZ_{lab}.pt', map_location=torch.device('cpu')))
 
-temps = Temps_module(nn_features, nn_z)
+temps_module = TempsModule(nn_features, nn_z)
 
-z,zerr, pz, flag, odds = temps.get_pz(input_data=torch.Tensor(col), 
+z, pz, odds = temps_module.get_pz(input_data=torch.Tensor(col), 
                             return_pz=True)
 
 
 # Create a DataFrame with the desired columns
-df = pd.DataFrame(np.c_[z, flag, odds, cat.ztarget, cat.reliable_S15, cat.specz_or_photo], 
-                  columns=['z','zflag', 'odds' ,'ztarget','reliable_S15', 'specz_or_photo'])
+df = pd.DataFrame(np.c_[z, odds, cat.ztarget, cat.reliable_S15, cat.specz_or_photo], 
+                  columns=['z', 'odds' ,'ztarget','reliable_S15', 'specz_or_photo'])
 
 # Calculate additional columns or operations if needed
 df['zwerr'] = (df.z - df.ztarget) / (1 + df.ztarget)
@@ -130,10 +126,12 @@ print(dfcuts.to_latex(float_format="%.3f",
 
 df_euclid = df[(df.z >0.2)&(df.z < 2.6)]
 
+df_euclid
+
 # +
 df_selected, cut, dfcuts  = select_cut(df_euclid,
                           completenss_lim=None, 
-                          nmad_lim=0.055, 
+                          nmad_lim= 0.05, 
                           outliers_lim=None, 
                           return_df=True)
 

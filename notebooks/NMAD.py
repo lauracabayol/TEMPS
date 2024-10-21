@@ -6,15 +6,15 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.16.2
 #   kernelspec:
-#     display_name: insight
+#     display_name: temps
 #     language: python
-#     name: insight
+#     name: temps
 # ---
 
 # %% [markdown]
-# # FIGURE 2 IN THE PAPER
+# # FIGURE METRICS
 
 # %% [markdown]
 # ## METRICS FOR THE DIFFERENT METHODS ON THE WIDE FIELD SAMPLE
@@ -43,15 +43,14 @@ rcParams["font.family"] = "STIXGeneral"
 
 
 # %%
-#insight modules
-import sys
-sys.path.append('../temps')
+import temps
 
-from archive import archive 
-from utils import nmad
-from temps_arch import EncoderPhotometry, MeasureZ
-from temps import Temps_module
-
+# %%
+from temps.archive import Archive 
+from temps.utils import nmad
+from temps.temps_arch import EncoderPhotometry, MeasureZ
+from temps.temps import TempsModule
+from temps.plots import plot_photoz
 
 
 # %%
@@ -62,21 +61,18 @@ eval_methods=True
 
 # %%
 #define here the directory containing the photometric catalogues
-parent_dir = '/data/astro/scratch2/lcabayol/insight/data/Euclid_EXT_MER_PHZ_DC2_v1.5'
-modules_dir = '../data/models/'
+parent_dir = Path('/data/astro/scratch/lcabayol/insight/data/Euclid_EXT_MER_PHZ_DC2_v1.5')
+modules_dir = Path('../data/models/')
 
 # %%
-#load catalogue and apply cuts
-
 filename_valid='euclid_cosmos_DC2_S1_v2.1_valid_matched.fits'
-
-hdu_list = fits.open(os.path.join(parent_dir,filename_valid))
+path_file = parent_dir / filename_valid  # Creating the path to the file
+hdu_list = fits.open(path_file)
 cat = Table(hdu_list[1].data).to_pandas()
 cat = cat[cat['FLAG_PHOT']==0]
 cat = cat[cat['mu_class_L07']==1]
 cat = cat[(cat['z_spec_S15'] > 0) | (cat['photo_z_L15'] > 0)]
 cat = cat[cat['MAG_VIS']<25]
-
 
 
 # %%
@@ -87,7 +83,7 @@ VISmag = cat['MAG_VIS']
 zsflag = cat['reliable_S15']
 
 # %%
-photoz_archive = archive(path = parent_dir,only_zspec=False)
+photoz_archive = Archive(path = parent_dir,only_zspec=False)
 f, ferr = photoz_archive._extract_fluxes(catalogue= cat)
 col, colerr = photoz_archive._to_colors(f, ferr)
 
@@ -101,20 +97,21 @@ if eval_methods:
     for il, lab in enumerate(['z','L15','DA']):
 
         nn_features = EncoderPhotometry()
-        nn_features.load_state_dict(torch.load(os.path.join(modules_dir,f'modelF_{lab}.pt')))
+        nn_features.load_state_dict(modules_dir / f'modelF_{lab}.pt',map_location=torch.device('cpu')))
         nn_z = MeasureZ(num_gauss=6)
-        nn_z.load_state_dict(torch.load(os.path.join(modules_dir,f'modelZ_{lab}.pt')))
+        nn_z.load_state_dict(modules_dir / f'modelZ_{lab}.pt',map_location=torch.device('cpu')))
 
-        temps = Temps_module(nn_features, nn_z)
+        temps_module = TempsModule(nn_features, nn_z)
 
-        z,zerr, zmode,pz, flag, odds = temps.get_pz(input_data=torch.Tensor(col), 
-                                    return_pz=True)
+        z, pz, odds = temps_module.get_pz(input_data=torch.Tensor(col), 
+                                                    return_pz=True,
+                                                    return_flag=True)
         # Create a DataFrame with the desired columns
-        df = pd.DataFrame(np.c_[ID, VISmag,z, zmode, flag, ztarget,zsflag,zerr, specz_or_photo], 
-                          columns=['ID','VISmag','z', 'zmode','zflag', 'ztarget','zsflag','zuncert','S15_L15_flag'])
+        df = pd.DataFrame(np.c_[ID, VISmag,z, odds, ztarget,zsflag, specz_or_photo], 
+                          columns=['ID','VISmag','z','odds', 'ztarget','zsflag','S15_L15_flag'])
 
         # Calculate additional columns or operations if needed
-        df['zwerr'] = (df.zmode - df.ztarget) / (1 + df.ztarget)
+        df['zwerr'] = (df.z - df.ztarget) / (1 + df.ztarget)
 
         # Drop any rows with NaN values
         df = df.dropna()
@@ -135,13 +132,16 @@ dfs['DA']['zwerr'] = (dfs['DA'].z - dfs['DA'].ztarget) / (1 + dfs['DA'].ztarget)
 # %%
 if not eval_methods:
     dfs = {}
-    dfs['z'] = pd.read_csv(os.path.join(parent_dir, 'predictions_specztraining.csv'), header=0) 
-    dfs['L15'] = pd.read_csv(os.path.join(parent_dir, 'predictions_speczL15training.csv'), header=0) 
-    dfs['DA'] = pd.read_csv(os.path.join(parent_dir, 'predictions_speczDAtraining.csv'), header=0) 
+    dfs['z'] = pd.read_csv(parent_dir /  'predictions_specztraining.csv', header=0) 
+    dfs['L15'] = pd.read_csv(parent_dir /  'predictions_speczL15training.csv', header=0) 
+    dfs['DA'] = pd.read_csv(parent_dir /  'predictions_speczDAtraining.csv', header=0) 
 
 
 # %% [markdown]
 # ### MAKE PLOT
+
+# %%
+df_list = [dfs['z'], dfs['L15'], dfs['DA']]
 
 # %%
 plot_photoz(df_list,
@@ -153,18 +153,3 @@ plot_photoz(df_list,
             save=False,
             samp='L15'
            )
-
-# %%
-plot_photoz(df_list,
-            nbins=8, 
-            xvariable='VISmag', 
-            metric='outliers', 
-            type_bin='bin', 
-            label_list = ['zs','zs+L15',r'TEMPS'],
-            save=False,
-            samp='L15'
-           )
-
-# %%
-
-# %%

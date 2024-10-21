@@ -1,6 +1,7 @@
-/temps/__pycache__/*
-/notebooks/.ipynb_checkpoints/
-/notebooks/*.ipynb
+temps/__pycache__/*
+notebooks/.ipynb_checkpoints/
+notebooks/cache
+notebooks/*.ipynb
 /notebooks/developer_notebooks
 temps/.ipynb_checkpoints/
 *.ipynb
