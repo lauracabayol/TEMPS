@@ -1,18 +1,18 @@
 import numpy as np
 import pandas as pd
 from astropy.io import fits
-import os
 from astropy.table import Table
 from scipy.spatial import KDTree
-
-import matplotlib.pyplot as plt
-
+from matplotlib import pyplot as plt
 from matplotlib import rcParams
+from pathlib import Path  
+from loguru import logger
+
+
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
-
-class archive():
+class Archive:
     def __init__(self, path, 
                  aperture=2, 
                  drop_stars=True, 
@@ -21,31 +21,42 @@ class archive():
                  extinction_corr=True, 
                  only_zspec=True, 
                  all_apertures=False,
-                 target_test='specz', flags_kept=[3,3.1,3.4,3.5,4]):
-        
-        self.aperture = aperture
-        self.all_apertures=all_apertures
-        self.flags_kept=flags_kept
-        
-        
-        
-        filename_calib='euclid_cosmos_DC2_S1_v2.1_calib_clean.fits'
-        filename_valid='euclid_cosmos_DC2_S1_v2.1_valid_matched.fits'
-        
-        hdu_list = fits.open(os.path.join(path,filename_calib))
-        cat = Table(hdu_list[1].data).to_pandas()
-        cat = cat[(cat['z_spec_S15'] > 0) | (cat['photo_z_L15'] > 0)]
+                 target_test='specz', flags_kept=[3, 3.1, 3.4, 3.5, 4]):
 
         
-        hdu_list = fits.open(os.path.join(path,filename_valid))
-        cat_test = Table(hdu_list[1].data).to_pandas()
+        logger.info("Starting archive")
+        self.aperture = aperture
+        self.all_apertures = all_apertures
+        self.flags_kept = flags_kept
+        
+        filename_calib = 'euclid_cosmos_DC2_S1_v2.1_calib_clean.fits'
+        filename_valid = 'euclid_cosmos_DC2_S1_v2.1_valid_matched.fits'
+        
+        # Use Path for file handling
+        path_calib = Path(path) / filename_calib
+        path_valid = Path(path) / filename_valid
+        
+        # Open the calibration FITS file
+        with fits.open(path_calib) as hdu_list:
+            cat = Table(hdu_list[1].data).to_pandas()
+            cat = cat[(cat['z_spec_S15'] > 0) | (cat['photo_z_L15'] > 0)]
+        
+        # Open the validation FITS file
+        with fits.open(path_valid) as hdu_list:
+            cat_test = Table(hdu_list[1].data).to_pandas()
+        
+        # Store the catalogs for later use
+        self.cat = cat
+        self.cat_test = cat_test
         
                 
         if drop_stars==True:
+            logger.info("dropping stars...")
             cat = cat[cat.mu_class_L07==1]
             cat_test = cat_test[cat_test.mu_class_L07==1]
 
         if clean_photometry==True:
+            logger.info("cleaning stars...")
             cat = self._clean_photometry(cat)
             cat_test = self._clean_photometry(cat_test)
             
@@ -216,9 +227,11 @@ class archive():
   
         
         if only_zspec:
+            logger.info("Selecting only galaxies with spectroscopic redshift")
             catalogue = self._select_only_zspec(catalogue, cat_flag='Calib')
             catalogue = self._clean_zspec_sample(catalogue, flags_kept=self.flags_kept)
         else:
+            logger.info("Selecting galaxies with spectroscopic redshift and high-precision photo-z")
             catalogue = self._take_zspec_and_photoz(catalogue, cat_flag='Calib')
             
             
@@ -233,9 +246,11 @@ class archive():
         
         
         if extinction_corr==True:
+            logger.info("Correcting MW extinction")
             f = self._correct_extinction(catalogue,f)
                                 
         if convert_colors==True:
+            logger.info("Converting to colors")
             col, colerr = self._to_colors(f, ferr)
             col_DA, colerr_DA = self._to_colors(f_DA, ferr_DA)
             
