@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name="temps"
+version="2024.0.0"
+authors = [
+    { name="Laura Cabayol-Garcia", email="lcabayol@pic.es" },
+]
+maintainers = [
+    { name="Laura Cabayol-Garcia", email="lcabayol@pic.es" },
+]
+description = "Neural network to predict photometric redshifts implementing domain adaptation"
+readme = "README.md"
+
+keywords = [
+    "Astrophysics", "Cosmology", "photometric redshifts", "Machine learning", "Domain adaptation",
+]
+requires-python = ">= 3.10"
+dependencies = [
+    "numpy",
+    "scipy",
+    "pandas",
+    "matplotlib",
+    "torch"
+]
+
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific :: Cosmology/Astrophysics",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+
+[project.optional-dependencies]
+jupyter = [
+    "jupyter",
+    "jupytext",
+]
+test = [
+  "pytest",
+]
+
+[tool.setuptools.packages.find]
+include = ["temps","temps.*"]
+namespaces = false
+
+
+[project.urls]
+Homepage="https://github.com/lauracabayol/TEMPS"
+Repository="https://github.com/lauracabayol/TEMPS.git"
+Issues="https://github.com/lauracabayol/TEMPS/issues"
