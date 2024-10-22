@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 from astropy.io import fits
-from astropy.table import Table
 from scipy.spatial import KDTree
 from matplotlib import pyplot as plt
 from matplotlib import rcParams

@@ -1,11 +1,10 @@
 import numpy as np
-import pandas as pd
 import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader, TensorDataset
 from torch.optim import lr_scheduler
-from scipy.stats import norm
 from loguru import logger
+import pandas as pd
 from tqdm import tqdm  # Import tqdm for progress bars
 
 # Local imports

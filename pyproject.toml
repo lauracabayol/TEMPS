@@ -23,7 +23,14 @@ dependencies = [
     "scipy",
     "pandas",
     "matplotlib",
-    "torch"
+    "torch",
+    "loguru",
+    "pathlib",
+    "astropy",
+    "gradio",
+    "sys",
+    "logging",
+    "typing"    
 ]
 
 classifiers = [
