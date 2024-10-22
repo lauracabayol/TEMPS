@@ -29,7 +29,6 @@ dependencies = [
     "astropy",
     "gradio",
     "logging",
-    "typing"    
 ]
 
 classifiers = [

@@ -3,7 +3,6 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
 
 import gradio as gr
 import pandas as pd
@@ -17,11 +16,6 @@ logger = logging.getLogger(__name__)
 
 # Define the prediction function that will be called by Gradio
 def predict(input_file_path: Path, model_path: Path):
-    logging.basicConfig(
-        stream=sys.stdout,
-        level=logging.INFO,
-        format="%(levelname)s:%(message)s",
-    )
 
     logger.info("Loading data and converting fluxes to colors")
 
