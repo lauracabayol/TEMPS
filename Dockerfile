@@ -29,6 +29,9 @@ RUN mkdir -p $HOME/app/models
 COPY --chown=user data/models/modelZ_DA.pt $HOME/app/models/
 COPY --chown=user data/models/modelF_DA.pt $HOME/app/models/
 
+# Expose the port the app runs on (if needed)
+EXPOSE 7860
+
 # Set the command to run your app, using the Hugging Face port
-CMD ["python", "app.py", "--port", "$PORT", "--server-name", "0.0.0.0"]
+CMD ["python", "app.py", "--port", "7860", "--server-name", "0.0.0.0"]
 
