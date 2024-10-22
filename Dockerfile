@@ -11,6 +11,7 @@ USER user
 
 # Install the necessary GitHub repositories
 RUN pip install git+https://github.com/lauracabayol/TEMPS.git
+RUN python -c "import temps"
 
 # Set environment variables for the user
 ENV HOME=/home/user \
