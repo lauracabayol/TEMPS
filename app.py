@@ -15,7 +15,8 @@ from temps.temps_arch import EncoderPhotometry, MeasureZ
 logger = logging.getLogger(__name__)
 
 # Define the prediction function that will be called by Gradio
-def predict(input_file_path: Path, model_path: Path):
+def predict(input_file_path: Path):
+    model_path = Path("app/models/")  
 
     logger.info("Loading data and converting fluxes to colors")
 
@@ -71,14 +72,13 @@ def main(args=None) -> None:
     gr.Interface(
         fn=predict,  # the function that Gradio will call
         inputs=[
-            gr.inputs.File(label="Upload your input CSV file"),  # file input for the data
-            gr.inputs.Textbox(label="Model path", default=str(args.model_path)),  # text input for model path
+            gr.File(label="Upload your input CSV file"),  # file input for the data
         ],
         outputs="json",  # return the results as JSON
         live=False,
         title="Prediction App",
         description="Upload a CSV file with your data to get predictions.",
-    ).launch(server_name=args.server_name, server_port=args.port)
+    ).launch(server_name=args.server_name, server_port=args.port, share=True)
 
 
 def get_args() -> argparse.Namespace:
