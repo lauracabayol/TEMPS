@@ -1,5 +1,5 @@
 ---
-title: UFC Predictor
+title: Photo-z predictor
 emoji: 🥋
 colorFrom: blue
 colorTo: red

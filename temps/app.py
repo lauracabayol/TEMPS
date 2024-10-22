@@ -103,12 +103,6 @@ def get_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "--model-path",
-        type=Path,
-        help="Path to the model files",
-    )
-
-    parser.add_argument(
         "--port",
         type=int,
         default=7860,
