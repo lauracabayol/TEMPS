@@ -63,7 +63,7 @@ def predict(input_file_path: Path, model_path: Path):
 
 
 # Gradio app
-def main(args: Optional[argparse.Namespace] = None) -> None:
+def main(args=None) -> None:
     if args is None:
         args = get_args()
 
