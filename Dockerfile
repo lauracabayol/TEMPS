@@ -10,9 +10,8 @@ RUN useradd -m -u 1000 user
 USER user
 
 # Install the necessary GitHub repositories
-RUN pip install git+https://github.com/lauracabayol/TEMPS.git && \
-    pip show temps
-RUN python -c "import temps"
+RUN pip install git+https://github.com/lauracabayol/TEMPS.git && 
+RUN pip install -e /home/user/TEMPS
 
 # Set environment variables for the user
 ENV HOME=/home/user \
