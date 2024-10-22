@@ -26,4 +26,4 @@ COPY --chown=user . $HOME/app
 EXPOSE 7860
 
 # Set the command to run your app, using the Hugging Face port
-CMD ["Photo-z predictions", "--data-folder", "data", "--model-path", "models/model.pth", "--port", "$PORT", "--server-name", "0.0.0.0", "--download-dataset"]
+CMD ["temps_app", "--data-folder", "data", "--model-path", "models/model.pth", "--port", "$PORT", "--server-name", "0.0.0.0", "--download-dataset"]
