@@ -1,10 +1,15 @@
-site_name: TEMPS
-
+site_name: TEMPS Documentation
 theme:
-  name: "material"
+  name: material
 
-plugins:
-  - mkdocstrings
-
-nav: 
+# Define the navigation structure for the docs
+nav:
   - Home: index.md
+  
+# Define the URL where the site will be deployed
+site_url: https://github.com/lauracabayol/TEMPS
+
+markdown_extensions:
+  - codehilite
+  - toc
+  - admonition
