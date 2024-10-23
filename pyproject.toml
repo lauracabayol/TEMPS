@@ -29,7 +29,8 @@ dependencies = [
     "astropy",
     "gradio",
     "jupytext",
-    "mkdocs"
+    "mkdocs",
+    "mkdocstrings"
 ]
 
 classifiers = [
