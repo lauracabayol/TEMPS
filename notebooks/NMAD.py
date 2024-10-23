@@ -33,6 +33,7 @@ import os
 from astropy.io import fits
 from astropy.table import Table
 import torch
+from pathlib import Path
 
 # %%
 #matplotlib settings
@@ -63,6 +64,8 @@ eval_methods=True
 #define here the directory containing the photometric catalogues
 parent_dir = Path('/data/astro/scratch/lcabayol/insight/data/Euclid_EXT_MER_PHZ_DC2_v1.5')
 modules_dir = Path('../data/models/')
+filename_calib = 'euclid_cosmos_DC2_S1_v2.1_calib_clean.fits'
+filename_valid = 'euclid_cosmos_DC2_S1_v2.1_valid_matched.fits'
 
 # %%
 filename_valid='euclid_cosmos_DC2_S1_v2.1_valid_matched.fits'
@@ -83,9 +86,11 @@ VISmag = cat['MAG_VIS']
 zsflag = cat['reliable_S15']
 
 # %%
-photoz_archive = Archive(path = parent_dir,only_zspec=False)
-f, ferr = photoz_archive._extract_fluxes(catalogue= cat)
-col, colerr = photoz_archive._to_colors(f, ferr)
+photoz_archive = Archive(path_calib = parent_dir/filename_calib, 
+                         path_valid = parent_dir/filename_valid,
+                         only_zspec=False)
+f = photoz_archive._extract_fluxes(catalogue= cat)
+col = photoz_archive._to_colors(f)
 
 # %% [markdown]
 # ### EVALUATE USING TRAINED MODELS
@@ -97,9 +102,9 @@ if eval_methods:
     for il, lab in enumerate(['z','L15','DA']):
 
         nn_features = EncoderPhotometry()
-        nn_features.load_state_dict(modules_dir / f'modelF_{lab}.pt',map_location=torch.device('cpu')))
+        nn_features.load_state_dict(torch.load(modules_dir / f'modelF_{lab}.pt',map_location=torch.device('cpu')))
         nn_z = MeasureZ(num_gauss=6)
-        nn_z.load_state_dict(modules_dir / f'modelZ_{lab}.pt',map_location=torch.device('cpu')))
+        nn_z.load_state_dict(torch.load(modules_dir / f'modelZ_{lab}.pt',map_location=torch.device('cpu')))
 
         temps_module = TempsModule(nn_features, nn_z)
 

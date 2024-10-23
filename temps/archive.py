@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from astropy.io import fits
+from astropy.table import Table
 from scipy.spatial import KDTree
 from matplotlib import pyplot as plt
 from matplotlib import rcParams
@@ -12,37 +13,47 @@ rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
 class Archive:
-    def __init__(self, path, 
-                 aperture=2, 
+    def __init__(self, 
+                 path_calib, 
+                 path_valid=None,
                  drop_stars=True, 
                  clean_photometry=True, 
                  convert_colors=True, 
                  extinction_corr=True, 
                  only_zspec=True, 
-                 all_apertures=False,
-                 target_test='specz', flags_kept=[3, 3.1, 3.4, 3.5, 4]):
+                 columns_photometry = ['FLUX_G_2','FLUX_R_2','FLUX_I_2','FLUX_Z_2','FLUX_Y_2','FLUX_J_2','FLUX_H_2'],
+                 columns_ebv = ['EB_V_corr_FLUX_G','EB_V_corr_FLUX_R','EB_V_corr_FLUX_I','EB_V_corr_FLUX_Z','EB_V_corr_FLUX_Y','EB_V_corr_FLUX_J','EB_V_corr_FLUX_H'],
+                 photoz_name="photo_z_L15",
+                 specz_name="z_spec_S15",
+                 target_test='specz', 
+                 flags_kept=[3, 3.1, 3.4, 3.5, 4]):
+
+        logger.info("Starting archive")
+        self.flags_kept = flags_kept
+        self.columns_photometry=columns_photometry
+        self.columns_ebv=columns_ebv    
 
         
-        logger.info("Starting archive")
-        self.aperture = aperture
-        self.all_apertures = all_apertures
-        self.flags_kept = flags_kept
+        if path_calib.suffix == ".fits":
+            with fits.open(path_calib) as hdu_list:
+                cat = Table(hdu_list[1].data).to_pandas()
+            if path_valid != None:
+                with fits.open(path_valid) as hdu_list:
+                    cat_test = Table(hdu_list[1].data).to_pandas()    
+                
+        elif path_calib.suffix == ".csv":
+            cat = pd.read_csv(path_calib)
+            if path_valid != None:
+                cat_test = pd.read_csv(path_valid)
+        else:
+            raise ValueError("Unsupported file format. Please provide a .fits or .csv file.")
+
+        cat = cat.rename(columns ={f"{specz_name}":"specz",
+                         f"{photoz_name}":"photo_z"})
+        cat_test = cat_test.rename(columns ={f"{specz_name}":"specz",
+                         f"{photoz_name}":"photo_z"})
         
-        filename_calib = 'euclid_cosmos_DC2_S1_v2.1_calib_clean.fits'
-        filename_valid = 'euclid_cosmos_DC2_S1_v2.1_valid_matched.fits'
-        
-        # Use Path for file handling
-        path_calib = Path(path) / filename_calib
-        path_valid = Path(path) / filename_valid
-        
-        # Open the calibration FITS file
-        with fits.open(path_calib) as hdu_list:
-            cat = Table(hdu_list[1].data).to_pandas()
-            cat = cat[(cat['z_spec_S15'] > 0) | (cat['photo_z_L15'] > 0)]
-        
-        # Open the validation FITS file
-        with fits.open(path_valid) as hdu_list:
-            cat_test = Table(hdu_list[1].data).to_pandas()
+        cat = cat[(cat['specz'] > 0) | (cat['photo_z'] > 0)]
         
         # Store the catalogs for later use
         self.cat = cat
@@ -85,57 +96,18 @@ class Archive:
         
             
     def _extract_fluxes(self,catalogue):
-        if self.all_apertures:
-            columns_f = [f'FLUX_{x}_{a}' for a in [1,2,3] for x in ['G','R','I','Z','Y','J','H']] 
-            columns_ferr = [f'FLUXERR_{x}_{a}' for a in [1,2,3] for x in ['G','R','I','Z','Y','J','H'] ]
-        else:
-            columns_f = [f'FLUX_{x}_{self.aperture}' for x in ['G','R','I','Z','Y','J','H']]
-            columns_ferr = [f'FLUXERR_{x}_{self.aperture}' for x in ['G','R','I','Z','Y','J','H']]
+        f = catalogue[self.columns_photometry].values
+        return f
 
-        f = catalogue[columns_f].values
-        ferr = catalogue[columns_ferr].values
-        return f, ferr
-    
-    def _extract_magnitudes(self,catalogue):
-        if self.all_apertures:
-            columns_m = [f'MAG_{x}_{a}' for a in [1,2,3] for x in ['G','R','I','Z','Y','J','H']] 
-            columns_merr = [f'MAGERR_{x}_{a}' for a in [1,2,3] for x in ['G','R','I','Z','Y','J','H'] ]
-        else:
-            columns_m = [f'MAG_{x}_{self.aperture}' for x in ['G','R','I','Z','Y','J','H']]
-            columns_merr = [f'MAGERR_{x}_{self.aperture}' for x in ['G','R','I','Z','Y','J','H']]
-
-        m = catalogue[columns_m].values
-        merr = catalogue[columns_merr].values
-        return m, merr
-    
-    def _to_colors(self, flux, fluxerr):
+    def _to_colors(self, flux):
         """ Convert fluxes to colors"""
-        
-        if self.all_apertures:
-
-            for a in range(3):
-                lim1 = 7*a
-                lim2 = 7*(a+1)
-                c = flux[:,lim1:(lim2-1)] / flux[:,(lim1+1):lim2]
-                cerr = np.sqrt((fluxerr[:,lim1:(lim2-1)]/ flux[:,(lim1+1):lim2])**2 + (flux[:,lim1:(lim2-1)] / flux[:,(lim1+1):lim2]**2)**2 * fluxerr[:,(lim1+1):lim2]**2)
-                
-                if a==0:
-                    color = c
-                    color_err = cerr
-                else:
-                    color = np.concatenate((color,c),axis=1)
-                    color_err = np.concatenate((color_err,cerr),axis=1)
-            
-        else:
-            color = flux[:,:-1] / flux[:,1:]
-
-            color_err = np.sqrt((fluxerr[:,:-1]/ flux[:,1:])**2 + (flux[:,:-1] / flux[:,1:]**2)**2 * fluxerr[:,1:]**2)
-        return color,color_err
+        color = flux[:,:-1] / flux[:,1:]
+        return color
     
     def _set_combiend_target(self, catalogue):
-        catalogue['target_z'] = catalogue.apply(lambda row: row['z_spec_S15'] 
-                                                if row['z_spec_S15'] > 0 
-                                                else row['photo_z_L15'], axis=1)
+        catalogue['target_z'] = catalogue.apply(lambda row: row['specz'] 
+                                                if row['specz'] > 0 
+                                                else row['photo_z'], axis=1)
         
         return catalogue
 
@@ -148,13 +120,7 @@ class Archive:
     
     def _correct_extinction(self,catalogue, f, return_ext_corr=False):
         """Corrects for extinction"""
-        ext_correction_cols =  [f'EB_V_corr_FLUX_{x}' for x in ['G','R','I','Z','Y','J','H']]
-        if self.all_apertures:
-            ext_correction = catalogue[ext_correction_cols].values
-            ext_correction = np.concatenate((ext_correction,ext_correction,ext_correction),axis=1)
-        else:
-            ext_correction = catalogue[ext_correction_cols].values
-        
+        ext_correction = catalogue[self.columns_ebv].values
         f = f * ext_correction
         if return_ext_corr:
             return f, ext_correction
@@ -164,14 +130,14 @@ class Archive:
     def _select_only_zspec(self,catalogue,cat_flag=None):
         """Selects only galaxies with spectroscopic redshift"""
         if cat_flag=='Calib':
-            catalogue = catalogue[catalogue.z_spec_S15>0]
+            catalogue = catalogue[catalogue.specz>0]
         elif cat_flag=='Valid':
-            catalogue = catalogue[catalogue.z_spec_S15>0]
+            catalogue = catalogue[catalogue.specz>0]
         return catalogue
     
     def _exclude_only_zspec(self,catalogue):
         """Selects only galaxies without spectroscopic redshift"""
-        catalogue = catalogue[(catalogue.z_spec_S15<0)&(catalogue.photo_z_L15>0)&(catalogue.photo_z_L15<4)]
+        catalogue = catalogue[(catalogue.specz<0)&(catalogue.photo_z>0)&(catalogue.photo_z<4)]
         return catalogue
     
     def _select_L15_sample(self,catalogue):
@@ -187,7 +153,7 @@ class Archive:
         if cat_flag=='Calib':
             catalogue = catalogue[catalogue.target_z>0]
         elif cat_flag=='Valid':
-            catalogue = catalogue[catalogue.z_spec_S15>0]
+            catalogue = catalogue[catalogue.specz>0]
         return catalogue
 
     def _clean_zspec_sample(self,catalogue ,flags_kept=[3,3.1,3.4,3.5,4]):
@@ -222,7 +188,7 @@ class Archive:
     def _set_training_data(self,catalogue, catalogue_da, only_zspec=True, extinction_corr=True, convert_colors=True):
         
         cat_da = self._exclude_only_zspec(catalogue_da)  
-        target_z_train_DA = cat_da['photo_z_L15'].values
+        target_z_train_DA = cat_da['photo_z'].values
   
         
         if only_zspec:
@@ -235,11 +201,10 @@ class Archive:
             
             
         self.cat_train=catalogue
-        f, ferr = self._extract_fluxes(catalogue)
-        
-        f_DA, ferr_DA = self._extract_fluxes(cat_da)
+        f = self._extract_fluxes(catalogue)
+        f_DA = self._extract_fluxes(cat_da)
         idx = np.random.randint(0, len(f_DA), len(f))
-        f_DA, ferr_DA = f_DA[idx], ferr_DA[idx] 
+        f_DA = f_DA[idx]
         target_z_train_DA = target_z_train_DA[idx]
         self.target_z_train_DA = target_z_train_DA
         
@@ -250,21 +215,17 @@ class Archive:
                                 
         if convert_colors==True:
             logger.info("Converting to colors")
-            col, colerr = self._to_colors(f, ferr)
-            col_DA, colerr_DA = self._to_colors(f_DA, ferr_DA)
+            col = self._to_colors(f)
+            col_DA = self._to_colors(f_DA)
             
             self.phot_train = col
-            self.photerr_train = colerr
             self.phot_train_DA = col_DA
-            self.photerr_train_DA = colerr_DA
         else:
             self.phot_train = f
-            self.photerr_train = ferr  
             self.phot_train_DA = f_DA
-            self.photerr_train_DA = ferr_DA
             
         if only_zspec==True:
-            self.target_z_train = catalogue['z_spec_S15'].values
+            self.target_z_train = catalogue['specz'].values
         else:
             self.target_z_train = catalogue['target_z'].values
             
@@ -275,7 +236,7 @@ class Archive:
         if target=='specz':
             catalogue = self._select_only_zspec(catalogue, cat_flag='Valid')
             catalogue = self._clean_zspec_sample(catalogue)
-            self.target_z_test = catalogue['z_spec_S15'].values
+            self.target_z_test = catalogue['specz'].values
             
         elif target=='L15':
             catalogue = self._select_L15_sample(catalogue)
@@ -284,45 +245,26 @@ class Archive:
                         
         self.cat_test=catalogue
             
-        f, ferr = self._extract_fluxes(catalogue)
+        f = self._extract_fluxes(catalogue)
         
         if extinction_corr==True:
             f = self._correct_extinction(catalogue,f)
             
         if convert_colors==True:
-            col, colerr = self._to_colors(f, ferr)
+            col = self._to_colors(f)
             self.phot_test = col
-            self.photerr_test = colerr
         else:
             self.phot_test = f
-            self.photerr_test = ferr  
             
         
         self.VIS_mag_test = catalogue['MAG_VIS'].values
             
         
     def get_training_data(self):
-        return self.phot_train, self.photerr_train, self.target_z_train, self.VIS_mag_train, self.phot_train_DA, self.photerr_train_DA, self.target_z_train_DA
+        return self.phot_train, self.target_z_train, self.VIS_mag_train, self.phot_train_DA, self.target_z_train_DA
 
     def get_testing_data(self):
-        return self.phot_test, self.photerr_test, self.target_z_test, self.VIS_mag_test
+        return self.phot_test, self.target_z_test, self.VIS_mag_test
 
     def get_VIS_mag(self, catalogue):
         return catalogue[['MAG_VIS']].values
-    
-    def plot_zdistribution(self, plot_test=False, bins=50):
-        _,_,specz = photoz_archive.get_training_data()
-        plt.hist(specz, bins = bins, hisstype='step', color='navy', label=r'Training sample')
-
-        if plot_test:
-            _,_,specz_test = photoz_archive.get_training_data()
-            plt.hist(specz, bins = bins, hisstype='step', color='goldenrod', label=r'Test sample',ls='--')
-
-            
-        plt.xticks(fontsize=12)
-        plt.yticks(fontsize=12)
-
-        plt.xlabel(r'Redshift', fontsize=14)
-        plt.ylabel('Counts', fontsize=14)
-        
-        plt.show()

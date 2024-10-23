@@ -28,6 +28,7 @@ dependencies = [
     "pathlib",
     "astropy",
     "gradio",
+    "jupytext"
 ]
 
 classifiers = [

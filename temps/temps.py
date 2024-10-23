@@ -5,6 +5,8 @@ from torch.utils.data import DataLoader, TensorDataset
 from torch.optim import lr_scheduler
 from loguru import logger
 import pandas as pd
+from scipy.stats import norm
+
 from tqdm import tqdm  # Import tqdm for progress bars
 
 from temps.utils import maximum_mean_discrepancy
@@ -47,7 +49,7 @@ class TempsModule:
         dataset = TensorDataset(input_data, input_data_da, target_data)
         train_dataset, val_dataset = torch.utils.data.random_split(
             dataset,
-            [int(len(dataset) * (1 - val_fraction)), int(len(dataset) * val_fraction)],
+            [int(len(dataset) * (1 - val_fraction)), int(len(dataset) * val_fraction)+1],
         )
         loader_train = DataLoader(
             train_dataset, batch_size=self.batch_size, shuffle=True
