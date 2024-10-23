@@ -6,12 +6,11 @@ The training and validation data are not available in the repository, but the mo
 
 ## Table of Contents
 
-- [Prerequisites](##Prerequisites)
-- [Installation](##installation)
-- [Usage](##usage)
-- [Deployed model](##Accessing-the-LSTM-depolyed-model)
-- [License](##license)
-
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Deployed model](#accessing-the-lstm-deployed-model)
+- [License](#license)
 ## Prerequisites
 
 Before proceeding, ensure that the following software is installed on your system:
