@@ -4,9 +4,6 @@ This repository contains a neural network to predict photometric redshifts. The 
 
 The training and validation data are not available in the repository, but the model can be trained with new data. The model is also deployed and available [here](https://huggingface.co/spaces/lauracabayol/TEMPS). The model in production enables making predictions for new galaxies with the pretrained models. 
 
-Details on the data and the pa
-
-
 ## Table of Contents
 
 - [Prerequisites](##Prerequisites)
@@ -49,7 +46,7 @@ Alternatively, one can access the deployed models at [HuggigFace](https://huggin
 
 
 ## Notebooks
-The repository contains notebooks to reproduce the figures in the [Paper](paper)
+The repository contains notebooks to reproduce the figures in the paper (to be updated with the link)
 The notebooks are loaded on GitHub as .py files. To convert them to .ipynb use <jupytext>
 
 ```bash
