@@ -1,6 +1,6 @@
 site_name: TEMPS Documentation
 theme:
-  name: material
+  name: mkdocs
 
 # Define the navigation structure for the docs
 nav:
