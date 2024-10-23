@@ -28,7 +28,7 @@ dependencies = [
     "pathlib",
     "astropy",
     "gradio",
-    "jupytext"
+    "jupytext",
     "mkdocs"
 ]
 
