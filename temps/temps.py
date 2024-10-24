@@ -190,8 +190,8 @@ class TempsModule:
     def get_pz(self, input_data, return_pz=True, return_flag=True, return_odds=False):
         """Get the predicted z values and their uncertainties."""
         logger.info("Predicting photo-z for the input galaxies...")
-        self.model_z.eval()
-        self.model_f.eval()
+        self.model_z.eval().to(self.device)
+        self.model_f.eval().to(self.device)
 
         input_data = input_data.to(self.device)
         features = self.model_f(input_data)
