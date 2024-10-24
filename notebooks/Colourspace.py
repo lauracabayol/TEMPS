@@ -94,6 +94,8 @@ def plot_som_map(som_data, plot_arg = 'z', vmin=0, vmax=1):
 #define here the directory containing the photometric catalogues
 parent_dir = Path('/data/astro/scratch/lcabayol/insight/data/Euclid_EXT_MER_PHZ_DC2_v1.5')
 modules_dir = Path('../data/models/')
+filename_calib = 'euclid_cosmos_DC2_S1_v2.1_calib_clean.fits'
+filename_valid = 'euclid_cosmos_DC2_S1_v2.1_valid_matched.fits'
 
 # +
 filename_valid='euclid_cosmos_DC2_S1_v2.1_valid_matched.fits'
@@ -113,9 +115,11 @@ ID = cat['ID']
 VISmag = cat['MAG_VIS']
 zsflag = cat['reliable_S15']
 
-photoz_archive = Archive(path = parent_dir,only_zspec=False)
-f, ferr = photoz_archive._extract_fluxes(catalogue= cat)
-col, colerr = photoz_archive._to_colors(f, ferr)
+photoz_archive = Archive(path_calib = parent_dir/filename_calib, 
+                         path_valid = parent_dir/filename_valid,
+                         only_zspec=False)
+f = photoz_archive._extract_fluxes(catalogue= cat)
+col = photoz_archive._to_colors(f)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
