@@ -1,5 +1,4 @@
-# Use a base image with Python
-FROM python:3.10
+ROM python:3.9-slim
 
 # Set up a new user named "user" with user ID 1000
 RUN useradd -m -u 1000 user
@@ -7,8 +6,11 @@ RUN useradd -m -u 1000 user
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH
 
-# Install necessary packages, including git
-RUN apt-get update && apt-get upgrade -y && apt-get install -y git
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
 # Switch to the "user" user
 USER user
@@ -16,22 +18,17 @@ USER user
 # Set the working directory to the user's app directory
 WORKDIR $HOME/app
 
-# Copy the current directory contents into the container at $HOME/app, setting the owner to the user
-COPY --chown=user . $HOME/app
+# Copy pyproject.toml first, setting the owner to the user
+COPY --chown=user pyproject.toml .
 
-# Install the necessary GitHub repositories
-RUN pip install --user git+https://github.com/lauracabayol/TEMPS.git
+# Install the project and its dependencies
+RUN pip install --no-cache-dir .
 
-# Create a directory for the models
-RUN mkdir -p $HOME/app/models
+# Copy the rest of the application
+COPY --chown=user . .
 
-# Copy model files into the models directory
-COPY --chown=user data/models/modelZ_DA.pt $HOME/app/models/
-COPY --chown=user data/models/modelF_DA.pt $HOME/app/models/
-
-# Expose the port the app runs on (if needed)
+# Expose the port
 EXPOSE 7860
 
-# Set the command to run your app, using the Hugging Face port
-CMD ["python", "app.py", "--port", "7860", "--server-name", "0.0.0.0"]
-
+# Set the command to run your app
+CMD ["python", "app.py", "--server-port", "7860", "--server-address", "0.0.0.0"]
