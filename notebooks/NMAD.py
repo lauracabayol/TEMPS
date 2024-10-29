@@ -61,6 +61,7 @@ eval_methods=True
 # ### LOAD DATA
 
 # %%
+
 #define here the directory containing the photometric catalogues
 parent_dir = Path('/data/astro/scratch/lcabayol/insight/data/Euclid_EXT_MER_PHZ_DC2_v1.5')
 modules_dir = Path('../data/models/')
@@ -68,7 +69,6 @@ filename_calib = 'euclid_cosmos_DC2_S1_v2.1_calib_clean.fits'
 filename_valid = 'euclid_cosmos_DC2_S1_v2.1_valid_matched.fits'
 
 # %%
-filename_valid='euclid_cosmos_DC2_S1_v2.1_valid_matched.fits'
 path_file = parent_dir / filename_valid  # Creating the path to the file
 hdu_list = fits.open(path_file)
 cat = Table(hdu_list[1].data).to_pandas()
@@ -158,3 +158,5 @@ plot_photoz(df_list,
             save=False,
             samp='L15'
            )
+
+# %%

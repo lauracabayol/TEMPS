@@ -30,6 +30,7 @@ dependencies = [
     "gradio",
     "jupytext",
     "mkdocs",
+    "typing"
 ]
 
 classifiers = [
