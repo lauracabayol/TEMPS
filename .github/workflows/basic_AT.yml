@@ -1,9 +1,9 @@
-# .github/workflows/python-tests.yml
-name: TEST basic automated testing
+# .github/workflows/basic_AT.yml
+name: TEMPS basic automated testing
 
 on:
   push:
-    branches: 'main'
+    branches: 'master'
   workflow_dispatch:
 
 jobs:
@@ -31,6 +31,6 @@ jobs:
 
     # Run the tests and specify the temporary directory as output_dir
     - name: Run tests
-      timeout-minutes: 70
+      timeout-minutes: 5
       run: |
         pytest tests/test_temps.py
