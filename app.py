@@ -11,6 +11,7 @@ from huggingface_hub import snapshot_download
 
 from temps.archive import Archive
 from temps.temps_arch import EncoderPhotometry, MeasureZ
+from temps.temps import TempsModule
 
 logger = logging.getLogger(__name__)
 
@@ -62,25 +63,6 @@ def predict(input_file_path: Path):
     }
     return result
 
-
-# Gradio app
-def main(args=None) -> None:
-    if args is None:
-        args = get_args()
-
-    # Define the Gradio interface
-    gr.Interface(
-        fn=predict,  # the function that Gradio will call
-        inputs=[
-            gr.File(label="Upload your input CSV file"),  # file input for the data
-        ],
-        outputs="json",  # return the results as JSON
-        live=False,
-        title="Prediction App",
-        description="Upload a CSV file with your data to get predictions.",
-    ).launch(server_name=args.server_name, server_port=args.port, share=True)
-
-
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
@@ -91,8 +73,8 @@ def get_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "--server-name",
-        default="127.0.0.1",
+        "--server-address",  # Changed from server-name
+        default="0.0.0.0",   # Changed default to match launch
         type=str,
     )
 
@@ -111,5 +93,25 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+interface = gr.Interface(
+    fn=predict, 
+    inputs=[
+        gr.File(
+            label="Upload CSV file",
+            file_types=[".csv"],
+            type="filepath"
+        )
+    ],   
+    outputs=[
+        gr.JSON(label="Predictions")
+    ],
+    title="Photometric Redshift Prediction",
+    description="Upload a CSV file containing flux measurements to get redshift predictions, posterior probabilities, and odds."
+)
+
 if __name__ == "__main__":
-    main()
+    interface.launch(
+        server_name="0.0.0.0",
+        server_port=7860,
+        share=True
+    )
