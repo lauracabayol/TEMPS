@@ -76,7 +76,7 @@ def get_args() -> argparse.Namespace:
 
     parser.add_argument(
         "--server-address",  # Changed from server-name
-        default="0.0.0.0",  # Changed default to match launch
+        default="127.0.0.1",  # Changed default to match launch
         type=str,
     )
 
@@ -106,4 +106,11 @@ interface = gr.Interface(
 if __name__ == "__main__":
     args = get_args()
     logging.basicConfig(level=args.log_level)
-    interface.launch(server_name=args.server_address, server_port=args.port, share=True)
+    logger.info(f"Starting server on {args.server_address}:{args.port}")
+    interface.launch(
+        server_name=args.server_address,
+        server_port=args.port,
+        share=True,
+        debug=True,  # Add debug mode
+        show_error=True,  # Show detailed error messages
+    )

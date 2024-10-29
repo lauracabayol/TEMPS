@@ -32,7 +32,8 @@ dependencies = [
     "mkdocs",
     "typing",
     "dataclasses",
-    "pre-commit"
+    "pre-commit",
+    "gradio"
 ]
 
 classifiers = [
