@@ -1,9 +1,6 @@
-import numpy as np
 import torch
 import argparse
 from loguru import logger
-from astropy.table import Table
-import pandas as pd
 from pathlib import Path
 
 from temps.archive import Archive

@@ -57,7 +57,7 @@ jupytext --to ipynb notebooks/*.py
 The model can be trained using the train.py script at the repo main directory.
 
 ```bash
-python train.py --config-file data/config.yml
+python scripts/train.py --config-file data/config.yml
 ```
 More information on the training script can be found in the [docs](https://lauracabayol.github.io/TEMPS/docs/docs/index.html)
 
