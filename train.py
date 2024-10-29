@@ -10,6 +10,7 @@ from temps.archive import Archive
 from temps.temps import TempsModule
 from temps.temps_arch import EncoderPhotometry, MeasureZ
 
+
 def train(config: dict) -> None:
     """
     Trains the TempsModule using photometry data.
@@ -37,25 +38,27 @@ def train(config: dict) -> None:
     temps_module = TempsModule(nn_features, nn_z)
 
     # Retrieve photometry and spectroscopic data for training
-    photoz_archive = Archive(path_calib=path_calib,
-                             path_valid=path_valid,
-                             drop_stars=False,
-                             clean_photometry=False,
-                             only_zspec=config["only_zs"],
-                             columns_photometry=config["bands"])
-                             
+    photoz_archive = Archive(
+        path_calib=path_calib,
+        path_valid=path_valid,
+        drop_stars=False,
+        clean_photometry=False,
+        only_zspec=config["only_zs"],
+        columns_photometry=config["bands"],
+    )
+
     f, specz, VIS_mag, f_DA, z_DA = photoz_archive.get_training_data()
 
     # Train the TempsModule
     logger.info("Starting model training...")
     temps_module.train(
-        input_data=f, 
+        input_data=f,
         input_data_da=f_DA,
-        target_data=specz, 
+        target_data=specz,
         nepochs=config["hyperparams"]["nepochs"],
-        step_size=config["hyperparams"]["nepochs"], 
+        step_size=config["hyperparams"]["nepochs"],
         val_fraction=0.1,  # Validation fraction of 10%
-        lr=config["hyperparams"]["learning_rate"]
+        lr=config["hyperparams"]["learning_rate"],
     )
     logger.info("Model training complete.")
 
@@ -64,6 +67,7 @@ def train(config: dict) -> None:
     torch.save(temps_module.modelF.state_dict(), output_model / "modelF_zs_test.pt")
     torch.save(temps_module.modelZ.state_dict(), output_model / "modelZ_zs_test.pt")
     logger.info("Models saved at: {}", output_model)
+
 
 def main() -> None:
     """
@@ -77,12 +81,13 @@ def main() -> None:
     # Load the configuration from the provided path
     config_path = args.config_path
     logger.info("Loading configuration from {}", config_path)
-    
+
     # Read the configuration file (assuming YAML format)
     config = read_config(config_path)
-    
+
     # Call the train function
     train(config)
+
 
 def get_args() -> argparse.Namespace:
     """
@@ -94,15 +99,16 @@ def get_args() -> argparse.Namespace:
         Parsed command-line arguments.
     """
     parser = argparse.ArgumentParser(description="Training script for TempsModule")
-    
+
     parser.add_argument(
         "--config-path",
         type=Path,
         required=True,
-        help="Path to the configuration file (YAML format)"
+        help="Path to the configuration file (YAML format)",
     )
-    
+
     return parser.parse_args()
+
 
 def read_config(config_path: Path) -> dict:
     """
@@ -119,10 +125,12 @@ def read_config(config_path: Path) -> dict:
         Parsed configuration dictionary.
     """
     import yaml
-    with open(config_path, 'r') as file:
+
+    with open(config_path, "r") as file:
         config = yaml.safe_load(file)
-    
+
     return config
+
 
 if __name__ == "__main__":
     main()

@@ -11,7 +11,7 @@ output_model: "/data/astro/scratch/lcabayol/insight/data/models/"
 file_type: "features"
 predict_photoz: False
 ntransformation: 8
-bands: 
+bands:
   - 'FLUX_G_2'
   - 'FLUX_R_2'
   - 'FLUX_I_2'
@@ -25,14 +25,14 @@ columns_ebv:
   - 'EB_V_corr_FLUX_R'
   - 'EB_V_corr_FLUX_I'
   - 'EB_V_corr_FLUX_Z'
-  - 'EB_V_corr_FLUX_Y' 
+  - 'EB_V_corr_FLUX_Y'
   - 'EB_V_corr_FLUX_J'
   - 'EB_V_corr_FLUX_H'
 
 hyperparams:
   step_size: 400         # Number of samples per batch during training
   nepochs: 600             # Number of training epochs
-  learning_rate: 0.001  
+  learning_rate: 0.001
   nGauss_MDN: 6
-  
-  
+
+

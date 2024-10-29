@@ -24,7 +24,7 @@ def test():
     ztrue = 0.4446
 
     z, pz, odds = temps_module.get_pz(
-        input_data=torch.Tensor(col), return_pz=True, return_flag=True
+        input_data=torch.Tensor(col).unsqueeze(0), return_pz=True, return_flag=True
     )
 
     zdiff = (z - ztrue).abs().mean()

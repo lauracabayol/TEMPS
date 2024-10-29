@@ -1,9 +1,9 @@
 # TEMPS documentation!
 
-Welcome to the documentation for TEMPS! 
-This repository contains a neural network to predict photometric redshifts. The neural network incorporates domain adaptation, a methodology to mitigate the impact of sample bias in the spectroscopic training samples. 
+Welcome to the documentation for TEMPS!
+This repository contains a neural network to predict photometric redshifts. The neural network incorporates domain adaptation, a methodology to mitigate the impact of sample bias in the spectroscopic training samples.
 
-The training and validation data are not available in the repository, but the model can be trained with new data. The model is also deployed and available [here](https://huggingface.co/spaces/lauracabayol/TEMPS). The model in production enables making predictions for new galaxies with the pretrained models. 
+The training and validation data are not available in the repository, but the model can be trained with new data. The model is also deployed and available [here](https://huggingface.co/spaces/lauracabayol/TEMPS). The model in production enables making predictions for new galaxies with the pretrained models.
 
 ## Table of Contents
 
@@ -39,11 +39,11 @@ Once your environment is ready, proceed with the installation of the package:
 ```
 pip install -e .
 ```
-This will already install the dependencies. 
+This will already install the dependencies.
 
 
 ## Deployed model
-Alternatively, one can access the deployed models at [HuggigFace](https://huggingface.co/spaces/lauracabayol/TEMPS). This enbles making predictions from a file with photometric measurements. The format should be a csv file with the following band photometries in this order: G,R,I,Z,Y,H,J. 
+Alternatively, one can access the deployed models at [HuggigFace](https://huggingface.co/spaces/lauracabayol/TEMPS). This enbles making predictions from a file with photometric measurements. The format should be a csv file with the following band photometries in this order: G,R,I,Z,Y,H,J.
 
 
 ## Notebooks
@@ -55,15 +55,15 @@ jupytext --to ipynb notebooks/*.py
 ```
 
 ## Training the Model
-The model can be trained using the train.py script at the repo main directory. 
+The model can be trained using the train.py script at the repo main directory.
 
 ```
 python train.py --config-file data/config.yml
 ```
-One only needs to modify the config file to point at the input files. Make sure to also specify the photometric bands naming, and the spectroscopic and photometric redshift columns. 
-Input catalogs must be in .fits or .csv formats and these should already contain clean photometry. 
+One only needs to modify the config file to point at the input files. Make sure to also specify the photometric bands naming, and the spectroscopic and photometric redshift columns.
+Input catalogs must be in .fits or .csv formats and these should already contain clean photometry.
 
-If extinction_corr is set to True, one must specify the column namings of the E_VB corrections in the config file. 
+If extinction_corr is set to True, one must specify the column namings of the E_VB corrections in the config file.
 
 ## License
 

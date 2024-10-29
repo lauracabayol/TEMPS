@@ -7,7 +7,7 @@ from loguru import logger
 import pandas as pd
 from scipy.stats import norm
 from dataclasses import dataclass, field
-from tqdm import tqdm  
+from tqdm import tqdm
 from typing import Optional, Tuple, List, Union
 
 from temps.utils import maximum_mean_discrepancy
@@ -279,11 +279,11 @@ class TempsModule:
         return_pz: bool = True,
         return_flag: bool = True,
         return_odds: bool = False,
-        ) -> Union[
-                Tuple[np.ndarray, np.ndarray],                # Return z and zerr
-                Tuple[np.ndarray, np.ndarray],                # Return z, pz
-                Tuple[np.ndarray, np.ndarray, np.ndarray]     # Return z, pz, odds
-            ]:
+    ) -> Union[
+        Tuple[np.ndarray, np.ndarray],  # Return z and zerr
+        Tuple[np.ndarray, np.ndarray],  # Return z, pz
+        Tuple[np.ndarray, np.ndarray, np.ndarray],  # Return z, pz, odds
+    ]:
         """Get the predicted redshift (z) values and their uncertainties from the model.
 
         This function predicts the photo-z for the input galaxies, computes the mean and standard

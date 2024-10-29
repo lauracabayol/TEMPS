@@ -8,11 +8,11 @@ python_version: 3.10
 pinned: false
 ---
 
-This repository contains a neural network to predict photometric redshifts. The neural network incorporates domain adaptation, a methodology to mitigate the impact of sample bias in the spectroscopic training samples. 
+This repository contains a neural network to predict photometric redshifts. The neural network incorporates domain adaptation, a methodology to mitigate the impact of sample bias in the spectroscopic training samples.
 
-The model is deployed and available [here](https://huggingface.co/spaces/lauracabayol/TEMPS). The model in production enables making predictions for new galaxies with the pretrained models. 
+The model is deployed and available [here](https://huggingface.co/spaces/lauracabayol/TEMPS). The model in production enables making predictions for new galaxies with the pretrained models.
 
-Documentation is available [here](https://lauracabayol.github.io/TEMPS/). 
+Documentation is available [here](https://lauracabayol.github.io/TEMPS/).
 
 ## Installation
 
@@ -34,7 +34,7 @@ Once your environment is ready, proceed with the installation of the package:
 ```bash
 pip install -e .
 ```
-This will already install the dependencies. 
+This will already install the dependencies.
 
 ## Notebooks
 
@@ -47,7 +47,7 @@ jupytext --to ipynb notebooks/*.py
 
 ## Usage
 
-The model can be trained using the train.py script at the repo main directory. 
+The model can be trained using the train.py script at the repo main directory.
 
 ```bash
 python train.py --config-file data/config.yml

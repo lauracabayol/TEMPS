@@ -9,6 +9,7 @@ from torch import nn
 from scipy.stats import norm
 import torch
 
+
 def calculate_eta(df: pd.DataFrame) -> float:
     """Calculate the percentage of outliers in the DataFrame based on zwerr column."""
     return len(df[np.abs(df.zwerr) > 0.15]) / len(df) * 100
@@ -172,15 +173,17 @@ def select_cut(
     else:
         return selected_cut["flagcut"], dfcuts
 
-def calculate_pit(self,
-                  model_f: nn.Module, 
-                  model_z: nn.Module,
-                  input_data: torch.Tensor,
-                  target_data: torch.Tensor,
-    ) -> List[float]:
-    
-    logger.info('Calculating PIT values')
-    
+
+def calculate_pit(
+    self,
+    model_f: nn.Module,
+    model_z: nn.Module,
+    input_data: torch.Tensor,
+    target_data: torch.Tensor,
+) -> List[float]:
+
+    logger.info("Calculating PIT values")
+
     pit_list = []
 
     model_f = model_f.eval()
@@ -189,42 +192,48 @@ def calculate_pit(self,
     model_z = model_z.to(self.device)
 
     input_data = input_data.to(self.device)
-            
 
     features = model_f(input_data)
     mu, logsig, logmix_coeff = model_z(features)
-    
-    logsig = torch.clamp(logsig,-6,2)
+
+    logsig = torch.clamp(logsig, -6, 2)
     sig = torch.exp(logsig)
 
     mix_coeff = torch.exp(logmix_coeff)
-    
-    mu,  mix_coeff, sig = mu.detach().cpu().numpy(),  mix_coeff.detach().cpu().numpy(), sig.detach().cpu().numpy() 
-    
+
+    mu, mix_coeff, sig = (
+        mu.detach().cpu().numpy(),
+        mix_coeff.detach().cpu().numpy(),
+        sig.detach().cpu().numpy(),
+    )
+
     for ii in range(len(input_data)):
-        pit = (mix_coeff[ii] * norm.cdf(target_data[ii]*np.ones(mu[ii].shape),mu[ii], sig[ii])).sum()
+        pit = (
+            mix_coeff[ii]
+            * norm.cdf(target_data[ii] * np.ones(mu[ii].shape), mu[ii], sig[ii])
+        ).sum()
         pit_list.append(pit)
-    
-    
+
     return pit_list
 
-def calculate_crps(self,
-                   model_f: nn.Module, 
-                  model_z: nn.Module,
-                  input_data: torch.Tensor,
-                  target_data: torch.Tensor,
-    ) -> List[float]:
-    logger.info('Calculating CRPS values')
+
+def calculate_crps(
+    self,
+    model_f: nn.Module,
+    model_z: nn.Module,
+    input_data: torch.Tensor,
+    target_data: torch.Tensor,
+) -> List[float]:
+    logger.info("Calculating CRPS values")
 
     def measure_crps(cdf, t):
-        zgrid = np.linspace(0,4,1000)
-        Deltaz = zgrid[None,:] - t[:,None]
-        DeltaZ_heaviside = np.where(Deltaz < 0,0,1)
-        integral = (cdf-DeltaZ_heaviside)**2
+        zgrid = np.linspace(0, 4, 1000)
+        Deltaz = zgrid[None, :] - t[:, None]
+        DeltaZ_heaviside = np.where(Deltaz < 0, 0, 1)
+        integral = (cdf - DeltaZ_heaviside) ** 2
         crps_value = integral.sum(1) / 1000
 
         return crps_value
-
 
     crps_list = []
 
@@ -235,16 +244,18 @@ def calculate_crps(self,
 
     input_data = input_data.to(self.device)
 
-
     features = model_f(input_data)
     mu, logsig, logmix_coeff = model_z(features)
-    logsig = torch.clamp(logsig,-6,2)
+    logsig = torch.clamp(logsig, -6, 2)
     sig = torch.exp(logsig)
 
     mix_coeff = torch.exp(logmix_coeff)
 
-
-    mu,  mix_coeff, sig = mu.detach().cpu().numpy(),  mix_coeff.detach().cpu().numpy(), sig.detach().cpu().numpy() 
+    mu, mix_coeff, sig = (
+        mu.detach().cpu().numpy(),
+        mix_coeff.detach().cpu().numpy(),
+        sig.detach().cpu().numpy(),
+    )
 
     z = (mix_coeff * mu).sum(1)
 
@@ -252,15 +263,12 @@ def calculate_crps(self,
     pz = np.zeros(shape=(len(target_data), len(x)))
     for ii in range(len(input_data)):
         for i in range(6):
-            pz[ii] += mix_coeff[ii,i] * norm.pdf(x, mu[ii,i], sig[ii,i])
+            pz[ii] += mix_coeff[ii, i] * norm.pdf(x, mu[ii, i], sig[ii, i])
 
-    pz = pz / pz.sum(1)[:,None]
+    pz = pz / pz.sum(1)[:, None]
 
-
-    cdf_z = np.cumsum(pz,1)
+    cdf_z = np.cumsum(pz, 1)
 
     crps_value = measure_crps(cdf_z, target_data)
-
-
 
     return crps_value
