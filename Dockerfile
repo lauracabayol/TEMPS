@@ -10,6 +10,7 @@ ENV HOME=/home/user \
 RUN apt-get update && apt-get install -y \
     build-essential \
     git \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Switch to the "user" user
@@ -21,8 +22,12 @@ WORKDIR $HOME/app
 # Copy pyproject.toml first, setting the owner to the user
 COPY --chown=user pyproject.toml .
 
+# Upgrade pip and install build tools
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+
+
 # Install the project and its dependencies
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir -e . -v
 
 # Copy the rest of the application
 COPY --chown=user . .
