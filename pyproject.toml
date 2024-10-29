@@ -31,7 +31,7 @@ dependencies = [
     "jupytext",
     "mkdocs",
     "typing",
-    "dataclasses",
+    "dataclasses"
 ]
 
 classifiers = [

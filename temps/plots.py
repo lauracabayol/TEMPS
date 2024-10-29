@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from temps.utils import nmad
+from temps.utils import nmad, sigma68
 from scipy import stats
 from typing import List, Optional, Dict
 
@@ -277,7 +277,7 @@ def plot_crps(
     crps_list_1: List[float],
     crps_list_2: Optional[List[float]] = None,
     crps_list_3: Optional[List[float]] = None,
-    label: Optional[List[str]] = None,
+    labels: Optional[List[str]] = None,
     sample: str = "specz",
     save: bool = True,
 ) -> None:
