@@ -27,7 +27,7 @@ def test():
         input_data=torch.Tensor(col).unsqueeze(0), return_pz=True, return_flag=True
     )
 
-    zdiff = (z - ztrue).abs().mean()
+    zdiff = np.abs(z - ztrue).mean()
 
     logger.info(f"zdiff: {zdiff}")
     logger.info("test passed")
