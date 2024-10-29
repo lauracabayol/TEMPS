@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM python:3.10-slim
 
 # Set up a new user named "user" with user ID 1000
 RUN useradd -m -u 1000 user
@@ -29,7 +29,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 # Install the project and its dependencies
 RUN pip install --no-cache-dir -e . -v
 
-# Copy the rest of the application
+# Copy the rest of the applicati
 COPY --chown=user . .
 
 # Expose the port
