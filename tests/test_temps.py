@@ -17,7 +17,7 @@ def test():
 
     col = np.array([0.54804805, 1.81142339, 0.63354394, 0.7356338 , 1.3578122 ,
        0.90108565])
-    ztrue = 0.444
+    ztrue = 0.4446
 
     z, pz, odds = temps_module.get_pz(input_data=torch.Tensor(col), 
                                             return_pz=True,

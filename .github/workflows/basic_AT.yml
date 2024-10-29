@@ -28,6 +28,11 @@ jobs:
 
     - name: Install temps
       run: pip install -e .[explicit]
+    # Add this new step to download model files
+    - name: Download model files
+      run: |
+        mkdir -p data/models
+        wget -O data/models/modelF_DA.pt https://raw.githubusercontent.com/TEMPS/master/data/models/modelF_DA.pt
 
     # Run the tests and specify the temporary directory as output_dir
     - name: Run tests
