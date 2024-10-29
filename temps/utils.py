@@ -4,8 +4,10 @@ import matplotlib.pyplot as plt
 from scipy import stats
 import torch
 from loguru import logger
-from typing import Optional, Tuple, Union
-
+from typing import Optional, Tuple, Union, List
+from torch import nn
+from scipy.stats import norm
+import torch
 
 def calculate_eta(df: pd.DataFrame) -> float:
     """Calculate the percentage of outliers in the DataFrame based on zwerr column."""
@@ -170,10 +172,11 @@ def select_cut(
     else:
         return selected_cut["flagcut"], dfcuts
 
-def calculate_pit(model_f: nn.Module, 
+def calculate_pit(self,
+                  model_f: nn.Module, 
                   model_z: nn.Module,
-                  input_data: Tensor,
-                  target_data: Tensor,
+                  input_data: torch.Tensor,
+                  target_data: torch.Tensor,
     ) -> List[float]:
     
     logger.info('Calculating PIT values')
@@ -205,10 +208,11 @@ def calculate_pit(model_f: nn.Module,
     
     return pit_list
 
-def calculate_crps(model_f: nn.Module, 
+def calculate_crps(self,
+                   model_f: nn.Module, 
                   model_z: nn.Module,
-                  input_data: Tensor,
-                  target_data: Tensor,
+                  input_data: torch.Tensor,
+                  target_data: torch.Tensor,
     ) -> List[float]:
     logger.info('Calculating CRPS values')
 
