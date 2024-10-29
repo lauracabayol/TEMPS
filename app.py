@@ -1,15 +1,12 @@
 from __future__ import annotations
 import argparse
 import logging
-import sys
 from pathlib import Path
 
 import gradio as gr
 import pandas as pd
 import torch
-from huggingface_hub import snapshot_download
 
-from temps.archive import Archive
 from temps.temps_arch import EncoderPhotometry, MeasureZ
 from temps.temps import TempsModule
 
@@ -17,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 # Define the prediction function that will be called by Gradio
 def predict(input_file_path: Path):
-    model_path = Path("app/models/")
+    model_path = Path("models/")
 
     logger.info("Loading data and converting fluxes to colors")
 
@@ -107,4 +104,6 @@ interface = gr.Interface(
 )
 
 if __name__ == "__main__":
-    interface.launch(server_name="0.0.0.0", server_port=7860, share=True)
+    args = get_args()
+    logging.basicConfig(level=args.log_level)
+    interface.launch(server_name=args.server_address, server_port=args.port, share=True)

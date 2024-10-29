@@ -1,12 +1,19 @@
+<!--
 ---
 title: Photo-z predictor
 emoji: 🌌
 colorFrom: blue
 colorTo: red
 sdk: docker
-python_version: 3.10
+python_version: 3.11
 pinned: false
 ---
+-->
+
+[![Python application](https://img.shields.io/badge/python_application-passing-success)](https://github.com/lauracabayol/TEMPS/actions)
+[![Pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
+[![Hugging Face Spaces](https://img.shields.io/badge/🤗_Spaces-deployed-blue)](https://huggingface.co/spaces/lauracabayol/TEMPS)
+[![Mkdocs](https://img.shields.io/badge/mkdocs-passing-success)](https://github.com/lauracabayol/TEMPS/actions)
 
 This repository contains a neural network to predict photometric redshifts. The neural network incorporates domain adaptation, a methodology to mitigate the impact of sample bias in the spectroscopic training samples.
 
