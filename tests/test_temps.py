@@ -4,14 +4,13 @@ import torch
 
 from temps.temps_arch import EncoderPhotometry, MeasureZ
 from temps.temps import TempsModule
-from temps.constants import MODULES_DIR
 
 
 def test():
     nn_features = EncoderPhotometry()
-    nn_features.load_state_dict(torch.load(MODULES_DIR / f'modelF_DA.pt',map_location=torch.device('cpu')))
+    nn_features.load_state_dict(torch.load("data/models/modelF_DA.pt",map_location=torch.device('cpu')))
     nn_z = MeasureZ(num_gauss=6)
-    nn_z.load_state_dict(torch.load(MODULES_DIR / f'modelZ_DA.pt',map_location=torch.device('cpu')))
+    nn_z.load_state_dict(torch.load("data/models/modelF_DA.pt",map_location=torch.device('cpu')))
 
     temps_module = TempsModule(nn_features, nn_z)
 
