@@ -17,7 +17,7 @@ pinned: false
 
 This repository contains a neural network to predict photometric redshifts. The neural network incorporates domain adaptation, a methodology to mitigate the impact of sample bias in the spectroscopic training samples.
 
-The model is deployed and available [here](https://huggingface.co/spaces/lauracabayol/TEMPS). The model in production enables making predictions for new galaxies with the pretrained models.
+The model is deployed and available [here](https://huggingface.co/spaces/lauracabayol/TEMPS) (WiP). The model in production enables making predictions for new galaxies with the pretrained models.
 
 Documentation is available [here](https://lauracabayol.github.io/TEMPS/).
 
