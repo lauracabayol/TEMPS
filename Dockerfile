@@ -11,5 +11,5 @@ COPY app.py .
 # Expose the port the app runs on (if needed)
 EXPOSE 7860
 
-# Set the command to run your app
-CMD ["python", "app.py", "--server-port", "7860", "--server-address","127.0.0.1"]
+# Updated command with correct argument names
+CMD ["python", "app.py", "--port", "7860", "--server-address", "0.0.0.0"]
