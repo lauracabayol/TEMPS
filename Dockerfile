@@ -1,5 +1,12 @@
 # Use a base image with Python
 FROM python:3.10-slim
+
+# Install git and other system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    fontconfig \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN pip install git+https://github.com/lauracabayol/TEMPS.git
 # Set the working directory
 WORKDIR /app
