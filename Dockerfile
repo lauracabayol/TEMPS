@@ -5,8 +5,8 @@ RUN pip install git+https://github.com/lauracabayol/TEMPS.git
 # Set the working directory
 WORKDIR /app
 
-# Copy the rest of your application files into the container
-COPY app/ .
+# Copy the application file(s)
+COPY app.py .
 
 # Expose the port the app runs on (if needed)
 EXPOSE 7860
