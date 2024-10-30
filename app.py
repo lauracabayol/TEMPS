@@ -31,10 +31,18 @@ def load_models(model_path: Path):
     nn_z = MeasureZ(num_gauss=6)
 
     nn_features.load_state_dict(
-        torch.load(model_path / "modelF_DA.pt", map_location=torch.device("cpu"))
+        torch.load(
+            model_path / "modelF_DA.pt",
+            weights_only=True,
+            map_location=torch.device("cpu"),
+        )
     )
     nn_z.load_state_dict(
-        torch.load(model_path / "modelZ_DA.pt", map_location=torch.device("cpu"))
+        torch.load(
+            model_path / "modelZ_DA.pt",
+            weights_only=True,
+            map_location=torch.device("cpu"),
+        )
     )
 
     return nn_features, nn_z
@@ -123,12 +131,4 @@ if __name__ == "__main__":
         logger.error(f"Failed to load models: {e}")
         raise
 
-    interface = gr.Interface(
-        fn=predict,
-        inputs=[gr.File(label="Upload CSV file", file_types=[".csv"], type="filepath")],
-        outputs=[gr.JSON(label="Predictions")],
-        title="Photometric Redshift Prediction",
-        description="Upload a CSV file containing flux measurements to get redshift predictions.",
-    )
-
-    interface.launch(show_error=True, debug=True)
+    interface.launch()
