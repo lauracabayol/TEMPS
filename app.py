@@ -1,77 +1,73 @@
-# Add this at the very top of the file, before other imports
-print("Script starting...")
-import sys
-
-print(f"Python version: {sys.version}")
-
 from __future__ import annotations  # This should actually be the first import
 import argparse
 import logging
 from pathlib import Path
 
-print("Starting to import libraries...")
 import gradio as gr
 import pandas as pd
 import torch
-
-print("Libraries imported successfully")
+import os
 
 from temps.temps_arch import EncoderPhotometry, MeasureZ
 from temps.temps import TempsModule
+from temps.constants import PROJ_ROOT
 
 logger = logging.getLogger(__name__)
 
-# Define the prediction function that will be called by Gradio
+
+def get_model_path() -> Path:
+    """Get the appropriate model path for both local and Docker/HF environments"""
+    if os.environ.get("SPACE_ID"):
+        # HuggingFace Spaces - models will be in the root directory
+        logger.info("Running on HuggingFace Spaces")
+        return Path("data/models")  # Absolute path to models in HF Spaces
+    else:
+        return PROJ_ROOT / "data/models/"
+
+
+def load_models(model_path: Path):
+    logger.info(f"Loading models from {model_path}")
+    nn_features = EncoderPhotometry()
+    nn_z = MeasureZ(num_gauss=6)
+
+    nn_features.load_state_dict(
+        torch.load(model_path / "modelF_DA.pt", map_location=torch.device("cpu"))
+    )
+    nn_z.load_state_dict(
+        torch.load(model_path / "modelZ_DA.pt", map_location=torch.device("cpu"))
+    )
+
+    return nn_features, nn_z
+
+
 def predict(input_file_path: Path):
-    model_path = Path("models/")
+    global LOADED_MODELS
+    if LOADED_MODELS is None:
+        logger.error("Models not loaded!")
+        return "Error: Models not initialized"
 
-    logger.info("Loading data and converting fluxes to colors")
+    nn_features, nn_z = LOADED_MODELS
 
-    # Load the input data file (CSV)
+    # Rest of your predict function, but use the pre-loaded models
     try:
         fluxes = pd.read_csv(input_file_path, sep=",", header=0)
     except Exception as e:
         logger.error(f"Error loading input file: {e}")
         return f"Error loading file: {e}"
 
-    # Assuming that the model expects "colors" as input
-    colors = fluxes.iloc[:, :-1] / fluxes.iloc[:, 1:]
-
-    logger.info("Loading model...")
-
-    # Load the neural network models from the given model path
-    nn_features = EncoderPhotometry()
-    nn_z = MeasureZ(num_gauss=6)
-
-    try:
-        nn_features.load_state_dict(
-            torch.load(model_path / "modelF.pt", map_location=torch.device("cpu"))
-        )
-        nn_z.load_state_dict(
-            torch.load(model_path / "modelZ.pt", map_location=torch.device("cpu"))
-        )
-    except Exception as e:
-        logger.error(f"Error loading model: {e}")
-        return f"Error loading model: {e}"
+    colors = fluxes.values[:, :-1] / fluxes.values[:, 1:]
 
     temps_module = TempsModule(nn_features, nn_z)
 
-    # Run predictions
     try:
         z, pz, odds = temps_module.get_pz(
-            input_data=torch.Tensor(colors.values), return_pz=True, return_flag=True
+            input_data=torch.Tensor(colors), return_pz=True, return_flag=True
         )
     except Exception as e:
         logger.error(f"Error during prediction: {e}")
         return f"Error during prediction: {e}"
 
-    # Return the predictions as a dictionary
-    result = {
-        "redshift (z)": z.tolist(),
-        "posterior (pz)": pz.tolist(),
-        "odds": odds.tolist(),
-    }
-    return result
+    return (z.tolist(),)
 
 
 def get_args() -> argparse.Namespace:
@@ -115,11 +111,24 @@ interface = gr.Interface(
 if __name__ == "__main__":
     args = get_args()
     logging.basicConfig(level=args.log_level)
-    logger.info(f"Starting server on {args.server_address}:{args.port}")
-    interface.launch(
-        server_name=args.server_address,
-        server_port=args.port,
-        share=True,
-        debug=True,
-        show_error=True,
+
+    # Load models before creating the interface
+    try:
+        # model_path = PROJ_ROOT / "data/models/"
+        model_path = get_model_path()
+        logger.info("Loading models...")
+        LOADED_MODELS = load_models(model_path)
+        logger.info("Models loaded successfully")
+    except Exception as e:
+        logger.error(f"Failed to load models: {e}")
+        raise
+
+    interface = gr.Interface(
+        fn=predict,
+        inputs=[gr.File(label="Upload CSV file", file_types=[".csv"], type="filepath")],
+        outputs=[gr.JSON(label="Predictions")],
+        title="Photometric Redshift Prediction",
+        description="Upload a CSV file containing flux measurements to get redshift predictions.",
     )
+
+    interface.launch(show_error=True, debug=True)
