@@ -1,11 +1,20 @@
-from __future__ import annotations
+# Add this at the very top of the file, before other imports
+print("Script starting...")
+import sys
+
+print(f"Python version: {sys.version}")
+
+from __future__ import annotations  # This should actually be the first import
 import argparse
 import logging
 from pathlib import Path
 
+print("Starting to import libraries...")
 import gradio as gr
 import pandas as pd
 import torch
+
+print("Libraries imported successfully")
 
 from temps.temps_arch import EncoderPhotometry, MeasureZ
 from temps.temps import TempsModule
@@ -111,6 +120,6 @@ if __name__ == "__main__":
         server_name=args.server_address,
         server_port=args.port,
         share=True,
-        debug=True,  # Add debug mode
-        show_error=True,  # Show detailed error messages
+        debug=True,
+        show_error=True,
     )
