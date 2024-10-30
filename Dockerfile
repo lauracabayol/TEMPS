@@ -1,30 +1,11 @@
-FROM pytorch/pytorch:latest
-
-WORKDIR /code
-
-# Install the repository directly from GitHub
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y git
-
-    # Set up a new user named "user" with user ID 1000
-RUN useradd -m -u 1000 user
-
-# Switch to the "user" user
-USER user
+# Use a base image with Python
+FROM python:3.10
 
 RUN pip install git+https://github.com/lauracabayol/TEMPS.git
-
-# Set home to the user's home directory
-ENV HOME=/home/user \
-    PATH=/home/user/.local/bin:$PATH
-
-# Set the working directory to the user's home directory
-WORKDIR $HOME/app
-
-# Copy the current directory contents into the container at $HOME/app
-# setting the owner to the user
-COPY --chown=user . $HOME/app
+# Set the working directory
+WORKDIR /app
+# Copy the rest of your application files into the container
+COPY app/ .
 
 # Expose the port the app runs on (if needed)
 EXPOSE 7860
