@@ -1,6 +1,5 @@
 # Use a base image with Python
-FROM python:3.10
-
+FROM python:3.10-slim
 RUN pip install git+https://github.com/lauracabayol/TEMPS.git
 # Set the working directory
 WORKDIR /app
