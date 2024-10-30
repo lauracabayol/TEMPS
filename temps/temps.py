@@ -365,8 +365,7 @@ class TempsModule:
             return self._calculate_odds(z, pz, zgrid)
         return z, pz
 
-    def _calculate_odds(
-        self, z: np.ndarray, pz: np.ndarray, zgrid: np.ndarray
+    def _calculate_odds(self,  z: np.ndarray, pz: np.ndarray, zgrid: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Calculate the odds for the estimated redshifts based on the cumulative distribution.
 
@@ -379,9 +378,17 @@ class TempsModule:
             Tuple[np.ndarray, np.ndarray, np.ndarray]: A tuple containing the predicted redshift values,
             PDF values, and calculated odds.
         """
+       
+        logger.info('Calculating ODDS values')
+        diff_matrix = np.abs(z[:, None] - zgrid[None, :])
+        idx_peak = np.argmax(pz, axis=1)
+        zpeak = zgrid[idx_peak]
+        idx_upper = np.argmin(np.abs((zpeak + 0.08)[:, None] - zgrid[None, :]), axis=1)
+        idx_lower = np.argmin(np.abs((zpeak - 0.08)[:, None] - zgrid[None, :]), axis=1)
 
-        cumulative = np.cumsum(pz, axis=1)
-        odds = np.array(
-            [np.max(np.abs(cumulative[i] - 0.68)) for i in range(cumulative.shape[0])]
-        )
+        odds = []
+        for jj in range(len(pz)):
+            odds.append(pz[jj,idx_lower[jj]:(idx_upper[jj]+1)].sum())
+    
+        odds = np.array(odds)
         return z, pz, odds
