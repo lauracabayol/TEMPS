@@ -1,4 +1,3 @@
-<!--
 ---
 title: Photo-z predictor
 emoji: 🌌
@@ -8,7 +7,6 @@ sdk: docker
 python_version: 3.11
 pinned: false
 ---
--->
 
 [![Python application](https://img.shields.io/badge/python_application-passing-success)](https://github.com/lauracabayol/TEMPS/actions)
 [![Pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
