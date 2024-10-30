@@ -8,6 +8,12 @@ WORKDIR /app
 # Copy the application file(s)
 COPY app.py .
 
+# Create models directory and copy model files
+RUN mkdir -p data/models
+
+# Copy model files - make sure these files exist in your repository
+COPY data/models/modelF_DA.pt data/models/
+COPY data/models/modelZ_DA.pt data/models/
 # Expose the port the app runs on (if needed)
 EXPOSE 7860
 
