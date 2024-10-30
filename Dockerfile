@@ -4,6 +4,7 @@ FROM python:3.10
 RUN pip install git+https://github.com/lauracabayol/TEMPS.git
 # Set the working directory
 WORKDIR /app
+
 # Copy the rest of your application files into the container
 COPY app/ .
 
