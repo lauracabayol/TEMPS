@@ -1,5 +1,5 @@
 # Use a base image with Python
-FROM python:3.10-slim
+FROM pytorch/pytorch:latest
 
 # Install git and other system dependencies
 RUN apt-get update && apt-get install -y \
@@ -24,4 +24,4 @@ COPY data/models/modelZ_DA.pt data/models/
 EXPOSE 7860
 
 # Updated command with correct argument names
-CMD ["python", "app.py", "--port", "7860", "--server-address", "0.0.0.0"]
+CMD ["python", "app.py", "--port", "7860", "--server-address", "127.0.0.1"]
