@@ -131,4 +131,4 @@ if __name__ == "__main__":
         logger.error(f"Failed to load models: {e}")
         raise
 
-    interface.launch()
+    interface.launch(server_name=args.server_name, server_port=args.server_port)
